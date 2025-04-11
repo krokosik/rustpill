@@ -1,0 +1,47 @@
+{
+  "name": "rustpill",
+  // Select between image and build properties to pull or build the image.
+  "build": {
+    "dockerfile": "Dockerfile",
+    "args": {
+      "CONTAINER_USER": "bluepill"
+    }
+  },
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "editor.formatOnPaste": true,
+        "editor.formatOnSave": true,
+        "editor.formatOnSaveMode": "file",
+        "editor.formatOnType": true,
+        "lldb.executable": "/usr/bin/lldb",
+        "files.watcherExclude": {
+          "**/target/**": true
+        },
+        "rust-analyzer.cargo.allTargets": false,
+        "rust-analyzer.cargo.target": "thumbv7m-none-eabi",
+        "[rust]": {
+          "editor.defaultFormatter": "rust-lang.rust-analyzer"
+        }
+      },
+      "extensions": [
+        "rust-lang.rust-analyzer",
+        "tamasfe.even-better-toml",
+        "fill-labs.dependi",
+        "probe-rs.probe-rs-debugger"
+      ]
+    }
+  },
+  "forwardPorts": [
+    8000,
+    3333
+  ],
+  // This only works for Linux and requires updating the `device` field
+  "runArgs": [
+    "--privileged",
+    "--device=/dev/ttyACM0",
+    "--group-add=dialout"
+  ],
+  "workspaceMount": "source=${localWorkspaceFolder},target=/home/bluepill/rustpill,type=bind,consistency=cached",
+  "workspaceFolder": "/home/bluepill/rustpill"
+}
