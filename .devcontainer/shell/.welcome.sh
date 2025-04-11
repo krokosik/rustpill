@@ -1,8 +1,2 @@
 echo "Probe-rs version $(probe-rs --version | cut -f2 -d' ')"
 echo "Rust version $(rustc --version | cut -f2 -d' ')"
-echo "Useful commands available:"
-echo " * Update LaTex packages: tlmgr update --all"
-echo " * Install a LaTex package:"
-echo "       tlmgr install packagename"
-echo "       texhash"
-echo " * Install an OS package: sudo apt-get install -y packagename"
