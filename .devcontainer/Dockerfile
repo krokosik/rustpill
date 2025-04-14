@@ -8,9 +8,19 @@ ENV LANG=C.UTF-8
 # Install dependencies
 RUN apt-get update \
     && apt-get install -y git curl llvm-dev libclang-dev clang unzip \
-    libusb-1.0-0 libssl-dev libudev-dev pkg-config xz-utils \
+    libusb-1.0-0 libssl-dev libudev-dev pkg-config xz-utils usbutils \
     && apt-get clean -y && rm -rf /var/lib/apt/lists/* /tmp/library-scripts
 
+# CA certificates
+RUN apt-get update -y && \
+    apt-get install -y --no-install-recommends ca-certificates && \
+    rm -r /var/cache/* /var/lib/apt/lists/*
+
+# Timezone
+RUN apt-get update -y && \
+    apt-get install -y --no-install-recommends tzdata && \
+    rm -r /var/cache/* /var/lib/apt/lists/*
+ENV TZ=Europe/Warsaw
 
 # Setup shell for user
 ENTRYPOINT [ "/bin/zsh" ]

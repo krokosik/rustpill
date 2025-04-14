@@ -4,6 +4,7 @@
   "build": {
     "dockerfile": "Dockerfile"
   },
+  "privileged": true,
   "customizations": {
     "vscode": {
       "settings": {
@@ -33,10 +34,10 @@
     8000,
     3333
   ],
-  // This only works for Linux and requires updating the `device` field
   "runArgs": [
-    "--privileged",
-    "--group-add=dialout"
+    "--group-add=dialout",
+    "--mount",
+    "type=bind,source=/run/udev,target=/run/udev,readonly"
   ],
   "workspaceMount": "source=${localWorkspaceFolder},target=/rustpill,type=bind,consistency=cached",
   "workspaceFolder": "/rustpill"
