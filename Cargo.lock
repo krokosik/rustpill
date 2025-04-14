@@ -742,7 +742,7 @@ dependencies = [
  "embassy-sync",
  "embassy-time",
  "embassy-usb",
- "embedded-hal 0.2.7",
+ "embedded-hal 1.0.0",
  "heapless",
  "nb 1.1.0",
  "panic-probe",
