@@ -26,11 +26,20 @@ bind_interrupts!(struct Irqs {
     USB_LP_CAN1_RX0 => usb::InterruptHandler<peripherals::USB>;
 });
 
+#[embassy_executor::task]
+async fn idle() {
+    loop {
+        embassy_futures::yield_now().await;
+    }
+}
+
 #[embassy_executor::main]
-async fn main(_spawner: Spawner) {
+async fn main(spawner: Spawner) {
     let mut config = Config::default();
     enable_usb_clock(&mut config);
     let mut p = embassy_stm32::init(config);
+
+    spawner.spawn(idle()).unwrap();
 
     /********************************** PWM **********************************/
     let mut pwm = SimplePwm::new(
