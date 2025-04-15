@@ -18,8 +18,8 @@ use {defmt_rtt as _, panic_probe as _};
 use rustpill::enable_usb_clock;
 
 const SERVO_FREQ: Hertz = Hertz(50);
-const SERVO_MIN_MS: u32 = 1;
-const SERVO_MAX_MS: u32 = 2;
+const SERVO_MIN_US: u32 = 500;
+const SERVO_MAX_US: u32 = 2500;
 
 bind_interrupts!(struct Irqs {
     TIM4 => timer::CaptureCompareInterruptHandler<peripherals::TIM4>;
@@ -44,8 +44,8 @@ async fn main(_spawner: Spawner) {
     );
     let max_duty_cycle = pwm.max_duty_cycle() as u32;
     info!("Max Duty Cycle: {}", max_duty_cycle);
-    let servo_min = max_duty_cycle * SERVO_FREQ.0 * SERVO_MIN_MS / 1_000;
-    let servo_max = max_duty_cycle * SERVO_FREQ.0 * SERVO_MAX_MS / 1_000;
+    let servo_min = max_duty_cycle * SERVO_FREQ.0 / 1_000 * SERVO_MIN_US / 1_000;
+    let servo_max = max_duty_cycle * SERVO_FREQ.0 / 1_000 * SERVO_MAX_US / 1_000;
 
     info!("Servo min: {}, Servo max: {}", servo_min, servo_max);
 
