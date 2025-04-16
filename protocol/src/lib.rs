@@ -15,7 +15,7 @@ endpoints! {
     | EndpointTy                | RequestTy     | ResponseTy            | Path              |
     | ----------                | ---------     | ----------            | ----              |
     | PingEndpoint              | u32           | u32                   | "ping"            |
-    | GetUniqueIdEndpoint       | ()            | u64                   | "unique_id/get"   |
+    | GetUniqueIdEndpoint       | ()            | [u8; 12]              | "unique_id/get"   |
     | SetSingleLedEndpoint      | SingleLed     | SingleLedSetResult    | "led/set_one"     |
     | SetAllLedEndpoint         | AllLedArray   | ()                    | "led/set_all"     |
     | StartAccelerationEndpoint | StartAccel    | ()                    | "accel/start"     |

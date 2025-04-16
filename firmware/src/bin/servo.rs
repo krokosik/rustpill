@@ -19,12 +19,13 @@ use postcard_rpc::server::impls::embassy_usb_v0_4::dispatch_impl::{
 };
 use postcard_rpc::server::{Dispatch, Server};
 use protocol::{
-    ENDPOINT_LIST, GetAngleEndpoint, SetAngle, SetAngleEndpoint, TOPICS_IN_LIST, TOPICS_OUT_LIST,
+    ENDPOINT_LIST, GetAngleEndpoint, GetUniqueIdEndpoint, PingEndpoint, SetAngle, SetAngleEndpoint,
+    TOPICS_IN_LIST, TOPICS_OUT_LIST,
 };
 use static_cell::ConstStaticCell;
 use {defmt_rtt as _, panic_probe as _};
 
-use firmware::enable_usb_clock;
+use firmware::{enable_usb_clock, usb_config};
 
 pub struct Context {
     pwm: SimplePwm<'static, peripherals::TIM4>,
@@ -63,6 +64,8 @@ define_dispatch! {
 
         | EndpointTy                | kind      | handler                       |
         | ----------                | ----      | -------                       |
+        | PingEndpoint              | blocking  | ping_handler                  |
+        | GetUniqueIdEndpoint       | blocking  | unique_id_handler             |
         | SetAngleEndpoint          | blocking  | set_angle_handler             |
         | GetAngleEndpoint          | blocking  | get_angle_handler             |
     };
@@ -75,22 +78,6 @@ define_dispatch! {
     topics_out: {
         list: TOPICS_OUT_LIST;
     };
-}
-
-fn usb_config() -> embassy_usb::Config<'static> {
-    let mut config = embassy_usb::Config::new(0xc0de, 0xcafe);
-    config.manufacturer = Some("QOD Lab");
-    config.product = Some("bluepill-servo");
-    config.serial_number = Some("2137");
-
-    // Required for windows compatibility.
-    // https://developer.nordicsemi.com/nRF_Connect_SDK/doc/1.9.1/kconfig/CONFIG_CDC_ACM_IAD.html#help
-    config.device_class = 0xEF;
-    config.device_sub_class = 0x02;
-    config.device_protocol = 0x01;
-    config.composite_with_iads = true;
-
-    config
 }
 
 #[embassy_executor::main]
@@ -134,7 +121,7 @@ async fn main(spawner: Spawner) {
     let driver = usb::Driver::new(p.USB, Irqs, p.PA12, p.PA11);
 
     // Create embassy-usb Config
-    let config = usb_config();
+    let config = usb_config("bluepill-servo");
 
     let context = Context {
         pwm,
@@ -191,4 +178,14 @@ fn get_angle_handler(context: &mut Context, _header: VarHeader, _rqst: ()) -> u8
     let duty_cycle = context.pwm.ch2().current_duty_cycle();
 
     ((duty_cycle - context.servo_min) * 180 / (context.servo_max - context.servo_min)) as u8
+}
+
+pub fn ping_handler(_context: &mut Context, _header: VarHeader, rqst: u32) -> u32 {
+    info!("ping");
+    rqst
+}
+
+pub fn unique_id_handler(_context: &mut Context, _header: VarHeader, _rqst: ()) -> [u8; 12] {
+    info!("unique_id");
+    *embassy_stm32::uid::uid()
 }
