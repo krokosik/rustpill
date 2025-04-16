@@ -7,7 +7,7 @@ async fn main() {
     println!("Connecting to USB device...");
     let client = RustpillClient::new();
     println!("Connected! Pinging 42");
-    let ping = client.ping(42).await.unwrap();
+    let ping = client.pingx2(42).await.unwrap();
     println!("Got: {ping}.");
     let uid = client.get_id().await.unwrap();
     println!("ID: {uid:024X}");
@@ -21,7 +21,7 @@ async fn main() {
         let parts: Vec<&str> = line.split_whitespace().collect();
         match parts.as_slice() {
             ["ping"] => {
-                let ping = client.ping(42).await.unwrap();
+                let ping = client.pingx2(42).await.unwrap();
                 println!("Got: {ping}.");
             }
             ["ping", n] => {
@@ -29,7 +29,7 @@ async fn main() {
                     println!("Bad u32: '{n}'");
                     continue;
                 };
-                let ping = client.ping(idx).await.unwrap();
+                let ping = client.pingx2(idx).await.unwrap();
                 println!("Got: {ping}.");
             }
             ["schema"] => {

@@ -19,8 +19,8 @@ use postcard_rpc::server::impls::embassy_usb_v0_4::dispatch_impl::{
 };
 use postcard_rpc::server::{Dispatch, Server};
 use protocol::{
-    ENDPOINT_LIST, GetAngleEndpoint, GetUniqueIdEndpoint, PingEndpoint, SetAngle, SetAngleEndpoint,
-    TOPICS_IN_LIST, TOPICS_OUT_LIST,
+    ENDPOINT_LIST, GetAngleEndpoint, GetUniqueIdEndpoint, PingX2Endpoint, SetAngle,
+    SetAngleEndpoint, TOPICS_IN_LIST, TOPICS_OUT_LIST,
 };
 use static_cell::ConstStaticCell;
 use {defmt_rtt as _, panic_probe as _};
@@ -64,7 +64,7 @@ define_dispatch! {
 
         | EndpointTy                | kind      | handler                       |
         | ----------                | ----      | -------                       |
-        | PingEndpoint              | blocking  | ping_handler                  |
+        | PingX2Endpoint            | blocking  | pingx2_handler                |
         | GetUniqueIdEndpoint       | blocking  | unique_id_handler             |
         | SetAngleEndpoint          | blocking  | set_angle_handler             |
         | GetAngleEndpoint          | blocking  | get_angle_handler             |
@@ -145,6 +145,9 @@ async fn main(spawner: Spawner) {
         // If the host disconnects, we'll return an error here.
         // If this happens, just wait until the host reconnects
         let _ = server.run().await;
+
+        // This is a workaround for the USB stack to work properly.
+        Timer::after_millis(1).await;
     }
 }
 
@@ -158,6 +161,7 @@ async fn idle() {
 /// This handles the low level USB management
 #[embassy_executor::task]
 pub async fn usb_task(mut usb: UsbDevice<'static, AppDriver>) {
+    info!("USB started");
     usb.run().await;
 }
 
@@ -180,9 +184,9 @@ fn get_angle_handler(context: &mut Context, _header: VarHeader, _rqst: ()) -> u8
     ((duty_cycle - context.servo_min) * 180 / (context.servo_max - context.servo_min)) as u8
 }
 
-pub fn ping_handler(_context: &mut Context, _header: VarHeader, rqst: u32) -> u32 {
-    info!("ping");
-    rqst
+pub fn pingx2_handler(_context: &mut Context, _header: VarHeader, rqst: u32) -> u32 {
+    info!("pingx2");
+    rqst * 2
 }
 
 pub fn unique_id_handler(_context: &mut Context, _header: VarHeader, _rqst: ()) -> [u8; 12] {

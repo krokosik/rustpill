@@ -1,9 +1,9 @@
 use postcard_rpc::{
     header::VarSeqKind,
     host_client::{HostClient, HostErr},
-    standard_icd::{ERROR_PATH, PingEndpoint, WireError},
+    standard_icd::{ERROR_PATH, WireError},
 };
-use protocol::GetUniqueIdEndpoint;
+use protocol::{GetUniqueIdEndpoint, PingX2Endpoint};
 use std::convert::Infallible;
 
 pub struct RustpillClient {
@@ -41,7 +41,7 @@ impl<T, E> FlattenErr for Result<T, E> {
 impl RustpillClient {
     pub fn new() -> Self {
         let client = HostClient::new_raw_nusb(
-            |d| d.serial_number() == Some("2137"),
+            |d| d.product_string() == Some("bluepill-servo"),
             ERROR_PATH,
             8,
             VarSeqKind::Seq2,
@@ -53,8 +53,8 @@ impl RustpillClient {
         self.client.wait_closed().await;
     }
 
-    pub async fn ping(&self, id: u32) -> Result<u32, RustpillError<Infallible>> {
-        let val = self.client.send_resp::<PingEndpoint>(&id).await?;
+    pub async fn pingx2(&self, id: u32) -> Result<u32, RustpillError<Infallible>> {
+        let val = self.client.send_resp::<PingX2Endpoint>(&id).await?;
         Ok(val)
     }
 

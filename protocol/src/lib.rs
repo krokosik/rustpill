@@ -11,7 +11,7 @@ endpoints! {
     omit_std = true;
     | EndpointTy                | RequestTy     | ResponseTy            | Path              |
     | ----------                | ---------     | ----------            | ----              |
-    | PingEndpoint              | u32           | u32                   | "ping"            |
+    | PingX2Endpoint            | u32           | u32                   | "pingx2"          |
     | GetUniqueIdEndpoint       | ()            | [u8; 12]              | "unique_id/get"   |
     | SetAngleEndpoint          | SetAngle      | ()                    | "servo/set_angle" |
     | GetAngleEndpoint          | ()            | u8                    | "servo/get_angle" |
