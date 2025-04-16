@@ -8,14 +8,14 @@ use embassy_stm32::gpio::{Level, Output, OutputType, Speed};
 use embassy_stm32::time::Hertz;
 use embassy_stm32::timer::simple_pwm::{PwmPin, SimplePwm};
 use embassy_stm32::usb::Driver;
-use embassy_stm32::{bind_interrupts, peripherals, timer, usb, Config};
+use embassy_stm32::{Config, bind_interrupts, peripherals, timer, usb};
 use embassy_time::Timer;
+use embassy_usb::Builder;
 use embassy_usb::class::cdc_acm::{CdcAcmClass, State};
 use embassy_usb::driver::EndpointError;
-use embassy_usb::Builder;
 use {defmt_rtt as _, panic_probe as _};
 
-use rustpill::enable_usb_clock;
+use firmware::enable_usb_clock;
 
 const SERVO_FREQ: Hertz = Hertz(50);
 const SERVO_MIN_US: u32 = 500;

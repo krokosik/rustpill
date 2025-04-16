@@ -569,6 +569,7 @@ dependencies = [
  "postcard",
  "postcard-rpc",
  "postcard-schema",
+ "protocol",
  "static_cell",
 ]
 
@@ -826,6 +827,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "02b3e5e68a3a1a02aad3ec490a98007cbc13c37cbe84a3cd7b8e406d76e7f778"
 dependencies = [
  "unicode-ident",
+]
+
+[[package]]
+name = "protocol"
+version = "0.1.0"
+dependencies = [
+ "postcard-rpc",
+ "postcard-schema",
+ "serde",
 ]
 
 [[package]]
