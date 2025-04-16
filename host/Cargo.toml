@@ -4,7 +4,10 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-postcard-rpc = { version = "0.11.8", features = ["use-std", "raw-nusb"] }
+postcard-rpc = { version = "0.11.8", git = "https://github.com/sjoerdsimons/postcard-rpc/", branch = "dynamic-eps", features = [
+    "use-std",
+    "raw-nusb",
+] }
 postcard-schema = { version = "0.2.1", features = ["derive"] }
 protocol = { version = "0.1.0", path = "../protocol", features = ["use-std"] }
 tokio = { version = "1.44.2", features = ["macros", "time", "rt-multi-thread"] }

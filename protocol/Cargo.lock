@@ -118,8 +118,7 @@ dependencies = [
 [[package]]
 name = "postcard-rpc"
 version = "0.11.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e8a441600d31c91b345bbaa387ea3f8fa05774a87a878227ecc6da00027f5058"
+source = "git+https://github.com/sjoerdsimons/postcard-rpc/?branch=dynamic-eps#f943da5dec181d9b1926e90099f31bdf2496ddf8"
 dependencies = [
  "heapless 0.8.0",
  "portable-atomic",
