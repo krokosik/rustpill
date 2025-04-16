@@ -6,14 +6,10 @@ use postcard_rpc::{
 use protocol::{GetUniqueIdEndpoint, PingX2Endpoint};
 use pyo3::prelude::*;
 use std::convert::Infallible;
-use tokio::runtime::Handle;
-
-use crate::runtime::RT;
 
 #[pyclass]
 pub struct ServoClient {
     pub client: HostClient<WireError>,
-    _handle: Handle,
 }
 
 #[derive(Debug)]
@@ -45,21 +41,15 @@ impl<E> Into<PyErr> for ServoError<E> {
 #[pymethods]
 impl ServoClient {
     #[new]
-    pub fn new() -> Self {
+    #[tokio::main]
+    pub async fn new() -> Self {
         let client = HostClient::new_raw_nusb(
             |d| d.product_string() == Some("bluepill-servo"),
             ERROR_PATH,
             8,
             VarSeqKind::Seq2,
         );
-        Self {
-            client,
-            _handle: RT
-                .get()
-                .expect("Failed to get Tokio runtime")
-                .handle()
-                .clone(),
-        }
+        Self { client }
     }
 
     pub async fn wait_closed(&self) {
