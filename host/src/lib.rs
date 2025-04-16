@@ -1,13 +1,11 @@
-use std::sync::OnceLock;
-
 use pyo3::prelude::*;
 
+mod runtime;
 mod servo;
 
+use runtime::RT;
 use servo::ServoClient;
 use tokio::runtime::Runtime;
-
-static RT: OnceLock<Runtime> = OnceLock::new();
 
 #[pymodule]
 fn rustpill_clients(m: &Bound<'_, PyModule>) -> PyResult<()> {
