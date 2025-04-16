@@ -1,7 +1,10 @@
+cargo-features = ["per-package-target"]
+
 [package]
 name = "firmware"
-version = "0.1.0"
-edition = "2024"
+version.workspace = true
+edition.workspace = true
+forced-target = "thumbv7m-none-eabi"
 
 [dependencies]
 cortex-m = { version = "0.7.6", features = [
