@@ -1,9 +1,0 @@
-[package]
-edition = "2021"
-name = "rustpill"
-version = "0.1.0"
-license = "MIT OR Apache-2.0"
-
-[workspace]
-resolver = "2"
-members = ["firmware", "host", "protocol"]
