@@ -22,20 +22,6 @@ impl<E> From<HostErr<WireError>> for RustpillError<E> {
     }
 }
 
-trait FlattenErr {
-    type Good;
-    type Bad;
-    fn flatten(self) -> Result<Self::Good, RustpillError<Self::Bad>>;
-}
-
-impl<T, E> FlattenErr for Result<T, E> {
-    type Good = T;
-    type Bad = E;
-    fn flatten(self) -> Result<Self::Good, RustpillError<Self::Bad>> {
-        self.map_err(RustpillError::Endpoint)
-    }
-}
-
 // ---
 
 impl RustpillClient {
