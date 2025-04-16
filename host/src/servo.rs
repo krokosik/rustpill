@@ -5,11 +5,13 @@ use postcard_rpc::{
 };
 use protocol::{GetUniqueIdEndpoint, PingX2Endpoint};
 use pyo3::prelude::*;
+use pyo3_stub_gen::derive::*;
 use std::convert::Infallible;
 
+#[gen_stub_pyclass]
 #[pyclass]
 pub struct ServoClient {
-    pub client: HostClient<WireError>,
+    client: HostClient<WireError>,
 }
 
 #[derive(Debug)]
@@ -38,6 +40,7 @@ impl<E> Into<PyErr> for ServoError<E> {
 }
 
 // ---
+#[gen_stub_pymethods]
 #[pymethods]
 impl ServoClient {
     #[new]
