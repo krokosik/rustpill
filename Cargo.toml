@@ -6,4 +6,4 @@ license = "MIT OR Apache-2.0"
 
 [workspace]
 resolver = "2"
-members = ["firmware"]
+members = ["firmware", "host", "protocol"]
