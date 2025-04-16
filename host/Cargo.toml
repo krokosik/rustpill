@@ -3,6 +3,13 @@ name = "host"
 version = "0.1.0"
 edition = "2024"
 
+[lib]
+# The name of the native library. This is the name which will be used in Python to import the
+# library (i.e. `import string_sum`). If you change this, you must also change the name of the
+# `#[pymodule]` in `src/lib.rs`.
+name = "rustpill_clients"
+crate-type = ["cdylib"]
+
 [dependencies]
 postcard-rpc = { version = "0.11.8", git = "https://github.com/sjoerdsimons/postcard-rpc/", branch = "dynamic-eps", features = [
     "use-std",
@@ -10,4 +17,8 @@ postcard-rpc = { version = "0.11.8", git = "https://github.com/sjoerdsimons/post
 ] }
 postcard-schema = { version = "0.2.1", features = ["derive"] }
 protocol = { version = "0.1.0", path = "../protocol", features = ["use-std"] }
+pyo3 = { version = "0.24.1", features = [
+    "extension-module",
+    "experimental-async",
+] }
 tokio = { version = "1.44.2", features = ["macros", "time", "rt-multi-thread"] }
