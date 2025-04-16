@@ -7,6 +7,8 @@ use servo::ServoClient;
 
 #[pymodule]
 fn rustpill_clients(m: &Bound<'_, PyModule>) -> PyResult<()> {
+    pyo3_log::init();
+    
     m.add_class::<ServoClient>()?;
     Ok(())
 }
