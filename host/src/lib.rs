@@ -64,6 +64,21 @@ impl RustpillClient {
         padded_id[..12].copy_from_slice(&id);
         Ok(u128::from_le_bytes(padded_id))
     }
+
+    pub async fn set_angle(&self, angle: u8) -> Result<(), RustpillError<Infallible>> {
+        self.client
+            .send_resp::<protocol::SetAngleEndpoint>(&protocol::SetAngle { angle })
+            .await?;
+        Ok(())
+    }
+
+    pub async fn get_angle(&self) -> Result<u8, RustpillError<Infallible>> {
+        let angle = self
+            .client
+            .send_resp::<protocol::GetAngleEndpoint>(&())
+            .await?;
+        Ok(angle)
+    }
 }
 
 impl Default for RustpillClient {

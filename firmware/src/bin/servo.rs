@@ -91,7 +91,7 @@ async fn main(spawner: Spawner) {
     let pbufs = PBUFS.take();
 
     /********************************** PWM **********************************/
-    let pwm = SimplePwm::new(
+    let mut pwm = SimplePwm::new(
         p.TIM4,
         None,
         Some(PwmPin::new_ch2(p.PB7, OutputType::PushPull)),
@@ -106,6 +106,8 @@ async fn main(spawner: Spawner) {
     let servo_max = max_duty_cycle * SERVO_FREQ.0 / 1_000 * SERVO_MAX_US / 1_000;
 
     info!("Servo min: {}, Servo max: {}", servo_min, servo_max);
+
+    pwm.ch2().enable();
 
     /********************************** USB **********************************/
     {
@@ -169,6 +171,7 @@ fn set_angle_handler(context: &mut Context, _header: VarHeader, rqst: SetAngle) 
     let mut duty_cycle = (context.servo_min as u32
         + rqst.angle as u32 * (context.servo_max - context.servo_min) as u32 / 180)
         as u16;
+    info!("Set angle: {} -> duty cycle: {}", rqst.angle, duty_cycle);
     if duty_cycle < context.servo_min {
         duty_cycle = context.servo_min;
     } else if duty_cycle > context.servo_max {

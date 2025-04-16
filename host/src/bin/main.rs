@@ -32,6 +32,24 @@ async fn main() {
                 let ping = client.pingx2(idx).await.unwrap();
                 println!("Got: {ping}.");
             }
+            ["angle", n] => {
+                let Ok(angle) = n.parse::<u8>() else {
+                    println!("Bad u8: '{n}'");
+                    continue;
+                };
+                client.set_angle(angle).await.unwrap();
+            }
+            ["angle"] => {
+                let angle = client.get_angle().await.unwrap();
+                println!("Got: {angle}.");
+            }
+            ["id"] => {
+                let uid = client.get_id().await.unwrap();
+                println!("ID: {uid:024X}");
+            }
+            ["exit"] | ["quit"] => {
+                break;
+            }
             ["schema"] => {
                 let schema = client.client.get_schema_report().await.unwrap();
 
