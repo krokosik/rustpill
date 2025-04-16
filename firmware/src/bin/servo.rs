@@ -1,21 +1,46 @@
 #![no_std]
 #![no_main]
 
-use defmt::{panic, *};
+use defmt::info;
 use embassy_executor::Spawner;
-use embassy_futures::join::join;
 use embassy_stm32::gpio::{Level, Output, OutputType, Speed};
 use embassy_stm32::time::Hertz;
 use embassy_stm32::timer::simple_pwm::{PwmPin, SimplePwm};
-use embassy_stm32::usb::Driver;
-use embassy_stm32::{Config, bind_interrupts, peripherals, timer, usb};
+use embassy_stm32::usb;
+use embassy_stm32::{Config, bind_interrupts, peripherals, timer};
+use embassy_sync::blocking_mutex::raw::ThreadModeRawMutex;
 use embassy_time::Timer;
-use embassy_usb::Builder;
-use embassy_usb::class::cdc_acm::{CdcAcmClass, State};
-use embassy_usb::driver::EndpointError;
+use embassy_usb::UsbDevice;
+use postcard_rpc::define_dispatch;
+use postcard_rpc::header::VarHeader;
+use postcard_rpc::server::impls::embassy_usb_v0_4::PacketBuffers;
+use postcard_rpc::server::impls::embassy_usb_v0_4::dispatch_impl::{
+    WireRxBuf, WireRxImpl, WireSpawnImpl, WireStorage, WireTxImpl,
+};
+use postcard_rpc::server::{Dispatch, Server};
+use protocol::{
+    ENDPOINT_LIST, GetAngleEndpoint, SetAngle, SetAngleEndpoint, TOPICS_IN_LIST, TOPICS_OUT_LIST,
+};
+use static_cell::ConstStaticCell;
 use {defmt_rtt as _, panic_probe as _};
 
 use firmware::enable_usb_clock;
+
+pub struct Context {
+    pwm: SimplePwm<'static, peripherals::TIM4>,
+    servo_min: u16,
+    servo_max: u16,
+}
+
+type AppDriver = usb::Driver<'static, peripherals::USB>;
+type AppStorage = WireStorage<ThreadModeRawMutex, AppDriver, 256, 256, 64, 256>;
+type BufStorage = PacketBuffers<1024, 1024>;
+type AppTx = WireTxImpl<ThreadModeRawMutex, AppDriver>;
+type AppRx = WireRxImpl<AppDriver>;
+type AppServer = Server<AppTx, AppRx, WireRxBuf, MyApp>;
+
+static PBUFS: ConstStaticCell<BufStorage> = ConstStaticCell::new(BufStorage::new());
+static STORAGE: AppStorage = AppStorage::new();
 
 const SERVO_FREQ: Hertz = Hertz(50);
 const SERVO_MIN_US: u32 = 500;
@@ -26,11 +51,46 @@ bind_interrupts!(struct Irqs {
     USB_LP_CAN1_RX0 => usb::InterruptHandler<peripherals::USB>;
 });
 
-#[embassy_executor::task]
-async fn idle() {
-    loop {
-        embassy_futures::yield_now().await;
-    }
+define_dispatch! {
+    app: MyApp;
+    spawn_fn: spawn_fn;
+    tx_impl: AppTx;
+    spawn_impl: WireSpawnImpl;
+    context: Context;
+
+    endpoints: {
+        list: ENDPOINT_LIST;
+
+        | EndpointTy                | kind      | handler                       |
+        | ----------                | ----      | -------                       |
+        | SetAngleEndpoint          | blocking  | set_angle_handler             |
+        | GetAngleEndpoint          | blocking  | get_angle_handler             |
+    };
+    topics_in: {
+        list: TOPICS_IN_LIST;
+
+        | TopicTy                   | kind      | handler                       |
+        | ----------                | ----      | -------                       |
+    };
+    topics_out: {
+        list: TOPICS_OUT_LIST;
+    };
+}
+
+fn usb_config() -> embassy_usb::Config<'static> {
+    let mut config = embassy_usb::Config::new(0xc0de, 0xcafe);
+    config.manufacturer = Some("QOD Lab");
+    config.product = Some("bluepill-servo");
+    config.serial_number = Some("2137");
+
+    // Required for windows compatibility.
+    // https://developer.nordicsemi.com/nRF_Connect_SDK/doc/1.9.1/kconfig/CONFIG_CDC_ACM_IAD.html#help
+    config.device_class = 0xEF;
+    config.device_sub_class = 0x02;
+    config.device_protocol = 0x01;
+    config.composite_with_iads = true;
+
+    config
 }
 
 #[embassy_executor::main]
@@ -39,10 +99,12 @@ async fn main(spawner: Spawner) {
     enable_usb_clock(&mut config);
     let mut p = embassy_stm32::init(config);
 
-    spawner.spawn(idle()).unwrap();
+    spawner.must_spawn(idle());
+
+    let pbufs = PBUFS.take();
 
     /********************************** PWM **********************************/
-    let mut pwm = SimplePwm::new(
+    let pwm = SimplePwm::new(
         p.TIM4,
         None,
         Some(PwmPin::new_ch2(p.PB7, OutputType::PushPull)),
@@ -58,20 +120,6 @@ async fn main(spawner: Spawner) {
 
     info!("Servo min: {}, Servo max: {}", servo_min, servo_max);
 
-    let mut pwm = pwm.ch2();
-    pwm.enable();
-
-    let angle_to_duty_cycle = |angle: u8| {
-        let duty_cycle = servo_min + angle as u32 * (servo_max - servo_min) / 180;
-        if duty_cycle < servo_min {
-            servo_min as u16
-        } else if duty_cycle > servo_max {
-            servo_max as u16
-        } else {
-            duty_cycle as u16
-        }
-    };
-
     /********************************** USB **********************************/
     {
         // BluePill board has a pull-up resistor on the D+ line.
@@ -83,75 +131,64 @@ async fn main(spawner: Spawner) {
     }
 
     // Create the driver, from the HAL.
-    let driver = Driver::new(p.USB, Irqs, p.PA12, p.PA11);
+    let driver = usb::Driver::new(p.USB, Irqs, p.PA12, p.PA11);
 
     // Create embassy-usb Config
-    let config = embassy_usb::Config::new(0xc0de, 0xcafe);
+    let config = usb_config();
 
-    // Create embassy-usb DeviceBuilder using the driver and config.
-    // It needs some buffers for building the descriptors.
-    let mut config_descriptor = [0; 256];
-    let mut bos_descriptor = [0; 256];
-    let mut control_buf = [0; 7];
-
-    let mut state = State::new();
-
-    let mut builder = Builder::new(
-        driver,
-        config,
-        &mut config_descriptor,
-        &mut bos_descriptor,
-        &mut [], // no msos descriptors
-        &mut control_buf,
+    let context = Context {
+        pwm,
+        servo_min: servo_min as u16,
+        servo_max: servo_max as u16,
+    };
+    let (device, tx_impl, rx_impl) = STORAGE.init(driver, config, pbufs.tx_buf.as_mut_slice());
+    let dispather = MyApp::new(context, spawner.into());
+    let vkk = dispather.min_key_len();
+    let mut server: AppServer = Server::new(
+        tx_impl,
+        rx_impl,
+        pbufs.rx_buf.as_mut_slice(),
+        dispather,
+        vkk,
     );
 
-    // Create classes on the builder.
-    let mut class = CdcAcmClass::new(&mut builder, &mut state, 64);
+    spawner.must_spawn(usb_task(device));
 
-    // Build the builder.
-    let mut usb = builder.build();
-
-    // Run the USB device.
-    let usb_fut = usb.run();
-
-    /********************************** LOOP **********************************/
-    let echo_fut = async {
-        loop {
-            class.wait_connection().await;
-            info!("Connected");
-            let mut buf = [0; 64];
-            loop {
-                match class.read_packet(&mut buf).await {
-                    Ok(n) => {
-                        let data = &buf[..n];
-                        info!("data: {:x}", data);
-
-                        let angle = data[0];
-
-                        let duty_cycle = angle_to_duty_cycle(angle);
-                        info!("angle: {}, duty_cycle: {}", angle, duty_cycle);
-
-                        pwm.set_duty_cycle(duty_cycle);
-                    }
-                    Err(_) => break,
-                }
-            }
-            info!("Disconnected");
-        }
-    };
-
-    // Run everything concurrently.
-    // If we had made everything `'static` above instead, we could do this using separate tasks instead.
-    join(usb_fut, echo_fut).await;
+    loop {
+        // If the host disconnects, we'll return an error here.
+        // If this happens, just wait until the host reconnects
+        let _ = server.run().await;
+    }
 }
 
-struct Disconnected {}
-
-impl From<EndpointError> for Disconnected {
-    fn from(val: EndpointError) -> Self {
-        match val {
-            EndpointError::BufferOverflow => panic!("Buffer overflow"),
-            EndpointError::Disabled => Disconnected {},
-        }
+#[embassy_executor::task]
+async fn idle() {
+    loop {
+        embassy_futures::yield_now().await;
     }
+}
+
+/// This handles the low level USB management
+#[embassy_executor::task]
+pub async fn usb_task(mut usb: UsbDevice<'static, AppDriver>) {
+    usb.run().await;
+}
+
+fn set_angle_handler(context: &mut Context, _header: VarHeader, rqst: SetAngle) {
+    let mut duty_cycle = (context.servo_min as u32
+        + rqst.angle as u32 * (context.servo_max - context.servo_min) as u32 / 180)
+        as u16;
+    if duty_cycle < context.servo_min {
+        duty_cycle = context.servo_min;
+    } else if duty_cycle > context.servo_max {
+        duty_cycle = context.servo_max;
+    }
+
+    context.pwm.ch2().set_duty_cycle(duty_cycle);
+}
+
+fn get_angle_handler(context: &mut Context, _header: VarHeader, _rqst: ()) -> u8 {
+    let duty_cycle = context.pwm.ch2().current_duty_cycle();
+
+    ((duty_cycle - context.servo_min) * 180 / (context.servo_max - context.servo_min)) as u8
 }

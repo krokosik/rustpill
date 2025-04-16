@@ -20,6 +20,8 @@ endpoints! {
     | SetAllLedEndpoint         | AllLedArray   | ()                    | "led/set_all"     |
     | StartAccelerationEndpoint | StartAccel    | ()                    | "accel/start"     |
     | StopAccelerationEndpoint  | ()            | bool                  | "accel/stop"      |
+    | SetAngleEndpoint          | SetAngle      | ()                    | "servo/set_angle" |
+    | GetAngleEndpoint          | ()            | u8                    | "servo/get_angle" |
 }
 
 topics! {
@@ -72,4 +74,14 @@ pub enum AccelRange {
 pub struct StartAccel {
     pub interval_ms: u32,
     pub range: AccelRange,
+}
+
+#[derive(Serialize, Deserialize, Schema, Debug, PartialEq)]
+pub struct SetAngle {
+    pub angle: u8,
+}
+
+#[derive(Serialize, Deserialize, Schema, Debug, PartialEq)]
+pub struct GetAngle {
+    pub angle: u8,
 }
