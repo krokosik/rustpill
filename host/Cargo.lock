@@ -226,6 +226,7 @@ dependencies = [
  "postcard-rpc",
  "postcard-schema",
  "protocol",
+ "tokio",
 ]
 
 [[package]]

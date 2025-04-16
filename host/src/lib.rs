@@ -3,11 +3,7 @@ use postcard_rpc::{
     host_client::{HostClient, HostErr},
     standard_icd::{ERROR_PATH, PingEndpoint, WireError},
 };
-use protocol::{
-    AccelRange, BadPositionError, GetUniqueIdEndpoint, Rgb8, SetAllLedEndpoint,
-    SetSingleLedEndpoint, SingleLed, StartAccel, StartAccelerationEndpoint,
-    StopAccelerationEndpoint,
-};
+use protocol::GetUniqueIdEndpoint;
 use std::convert::Infallible;
 
 pub struct RustpillClient {
@@ -45,7 +41,7 @@ impl<T, E> FlattenErr for Result<T, E> {
 impl RustpillClient {
     pub fn new() -> Self {
         let client = HostClient::new_raw_nusb(
-            |d| d.product_string() == Some("bluepill-servo"),
+            |d| d.serial_number() == Some("2137"),
             ERROR_PATH,
             8,
             VarSeqKind::Seq2,
@@ -62,9 +58,11 @@ impl RustpillClient {
         Ok(val)
     }
 
-    pub async fn get_id(&self) -> Result<u64, RustpillError<Infallible>> {
+    pub async fn get_id(&self) -> Result<u128, RustpillError<Infallible>> {
         let id = self.client.send_resp::<GetUniqueIdEndpoint>(&()).await?;
-        Ok(id)
+        let mut padded_id = [0u8; 16];
+        padded_id[..12].copy_from_slice(&id);
+        Ok(u128::from_le_bytes(padded_id))
     }
 }
 
@@ -72,4 +70,14 @@ impl Default for RustpillClient {
     fn default() -> Self {
         Self::new()
     }
+}
+
+pub async fn read_line() -> String {
+    tokio::task::spawn_blocking(|| {
+        let mut line = String::new();
+        std::io::stdin().read_line(&mut line).unwrap();
+        line
+    })
+    .await
+    .unwrap()
 }
