@@ -1,0 +1,13 @@
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+
+[workspace]
+resolver = "2"
+members = ["firmware", "rustpill_clients", "protocol"]
+
+[profile.dev.package.firmware]
+opt-level = "s"
+
+[profile.release.package.firmware]
+debug = 2

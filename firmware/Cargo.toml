@@ -1,7 +1,10 @@
+cargo-features = ["per-package-target"]
+
 [package]
 name = "firmware"
-version = "0.1.0"
-edition = "2024"
+version.workspace = true
+edition.workspace = true
+forced-target = "thumbv7m-none-eabi"
 
 [dependencies]
 cortex-m = { version = "0.7.6", features = [
@@ -43,9 +46,3 @@ panic-probe = { version = "0.3", features = ["print-defmt"] }
 heapless = { version = "0.8", default-features = false }
 nb = "1.0.0"
 static_cell = "2.0.0"
-
-[profile.dev]
-opt-level = "s"
-
-[profile.release]
-debug = 2
