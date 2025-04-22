@@ -1674,6 +1674,7 @@ name = "rustpill_clients"
 version = "0.1.0"
 dependencies = [
  "env_logger",
+ "log",
  "postcard-rpc",
  "postcard-schema",
  "protocol",

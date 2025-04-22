@@ -1,7 +1,7 @@
 use postcard_rpc::{
     header::VarSeqKind,
     host_client::{HostClient, HostErr},
-    standard_icd::{ERROR_PATH, WireError},
+    standard_icd::{ERROR_PATH, LoggingTopic, WireError},
 };
 use protocol::{GetUniqueIdEndpoint, PingX2Endpoint};
 use pyo3::prelude::*;
@@ -53,6 +53,23 @@ impl ServoClient {
             8,
             VarSeqKind::Seq2,
         );
+        let mut logsub = client.subscribe_multi::<LoggingTopic>(64).await.unwrap();
+
+        // Spawn a background task to handle log messages
+        tokio::spawn(async move {
+            loop {
+                match logsub.recv().await {
+                    Ok(log) => {
+                        log::info!("FIRMWARE: {}", log);
+                    }
+                    Err(e) => {
+                        log::error!("Log subscription error: {:?}", e);
+                        break;
+                    }
+                }
+            }
+        });
+
         Self { client }
     }
 

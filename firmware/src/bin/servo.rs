@@ -9,15 +9,15 @@ use embassy_stm32::timer::simple_pwm::{PwmPin, SimplePwm};
 use embassy_stm32::usb;
 use embassy_stm32::{Config, bind_interrupts, peripherals, timer};
 use embassy_sync::blocking_mutex::raw::ThreadModeRawMutex;
-use embassy_time::Timer;
+use embassy_time::{Duration, Ticker, Timer};
 use embassy_usb::UsbDevice;
-use postcard_rpc::define_dispatch;
 use postcard_rpc::header::VarHeader;
 use postcard_rpc::server::impls::embassy_usb_v0_4::PacketBuffers;
 use postcard_rpc::server::impls::embassy_usb_v0_4::dispatch_impl::{
     WireRxBuf, WireRxImpl, WireSpawnImpl, WireStorage, WireTxImpl,
 };
-use postcard_rpc::server::{Dispatch, Server};
+use postcard_rpc::server::{Dispatch, Sender, Server};
+use postcard_rpc::{define_dispatch, sender_fmt};
 use protocol::{
     ENDPOINT_LIST, GetAngleEndpoint, GetUniqueIdEndpoint, PingX2Endpoint, SetAngle,
     SetAngleEndpoint, TOPICS_IN_LIST, TOPICS_OUT_LIST,
@@ -133,7 +133,7 @@ async fn main(spawner: Spawner) {
     let (device, tx_impl, rx_impl) = STORAGE.init(driver, config, pbufs.tx_buf.as_mut_slice());
     let dispather = MyApp::new(context, spawner.into());
     let vkk = dispather.min_key_len();
-    let mut server: AppServer = Server::new(
+    let server: AppServer = Server::new(
         tx_impl,
         rx_impl,
         pbufs.rx_buf.as_mut_slice(),
@@ -141,16 +141,11 @@ async fn main(spawner: Spawner) {
         vkk,
     );
 
+    let sender = server.sender();
+
     spawner.must_spawn(usb_task(device));
-
-    loop {
-        // If the host disconnects, we'll return an error here.
-        // If this happens, just wait until the host reconnects
-        let _ = server.run().await;
-
-        // This is a workaround for the USB stack to work properly.
-        Timer::after_millis(1).await;
-    }
+    spawner.must_spawn(server_task(server));
+    spawner.must_spawn(logging_task(sender));
 }
 
 #[embassy_executor::task]
@@ -165,6 +160,34 @@ async fn idle() {
 pub async fn usb_task(mut usb: UsbDevice<'static, AppDriver>) {
     info!("USB started");
     usb.run().await;
+}
+
+#[embassy_executor::task]
+async fn server_task(mut server: AppServer) {
+    loop {
+        // If the host disconnects, we'll return an error here.
+        // If this happens, just wait until the host reconnects
+        let _ = server.run().await;
+
+        // This is a workaround for the USB stack to work properly.
+        Timer::after_millis(1).await;
+    }
+}
+
+#[embassy_executor::task]
+pub async fn logging_task(sender: Sender<AppTx>) {
+    let mut ticker = Ticker::every(Duration::from_millis(1000));
+    let mut ctr = 0u16;
+    loop {
+        ticker.next().await;
+        defmt::info!("logging");
+        if ctr & 0b1 != 0 {
+            let _ = sender.log_str("Hello world!").await;
+        } else {
+            let _ = sender_fmt!(sender, "formatted: {ctr}").await;
+        }
+        ctr = ctr.wrapping_add(1);
+    }
 }
 
 fn set_angle_handler(context: &mut Context, _header: VarHeader, rqst: SetAngle) {
