@@ -4,7 +4,7 @@ edition = "2024"
 
 [workspace]
 resolver = "2"
-members = ["firmware", "host", "protocol"]
+members = ["firmware", "rustpill_clients", "protocol"]
 
 [profile.dev.package.firmware]
 opt-level = "s"
