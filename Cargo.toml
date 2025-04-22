@@ -5,3 +5,9 @@ edition = "2024"
 [workspace]
 resolver = "2"
 members = ["firmware", "host", "protocol"]
+
+[profile.dev.package.firmware]
+opt-level = "s"
+
+[profile.release.package.firmware]
+debug = 2
