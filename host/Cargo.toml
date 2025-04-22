@@ -12,10 +12,7 @@ doc = false
 
 [dependencies]
 env_logger = "0.11.8"
-postcard-rpc = { version = "0.11.8", git = "https://github.com/sjoerdsimons/postcard-rpc/", branch = "dynamic-eps", features = [
-    "use-std",
-    "raw-nusb",
-] }
+postcard-rpc = { version = "0.11.9", features = ["use-std", "raw-nusb"] }
 postcard-schema = { version = "0.2.1", features = ["derive"] }
 protocol = { version = "0.1.0", path = "../protocol", features = ["use-std"] }
 pyo3 = { version = "0.24.1", features = [
