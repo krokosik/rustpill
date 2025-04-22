@@ -1,0 +1,221 @@
+#![no_std]
+#![no_main]
+
+use defmt::info;
+use embassy_executor::Spawner;
+use embassy_stm32::gpio::{Level, Output, OutputType, Speed};
+use embassy_stm32::time::Hertz;
+use embassy_stm32::timer::simple_pwm::{PwmPin, SimplePwm};
+use embassy_stm32::usb;
+use embassy_stm32::{Config, bind_interrupts, peripherals, timer};
+use embassy_sync::blocking_mutex::raw::ThreadModeRawMutex;
+use embassy_time::{Duration, Ticker, Timer};
+use embassy_usb::UsbDevice;
+use postcard_rpc::header::VarHeader;
+use postcard_rpc::server::impls::embassy_usb_v0_4::PacketBuffers;
+use postcard_rpc::server::impls::embassy_usb_v0_4::dispatch_impl::{
+    WireRxBuf, WireRxImpl, WireSpawnImpl, WireStorage, WireTxImpl,
+};
+use postcard_rpc::server::{Dispatch, Sender, Server};
+use postcard_rpc::{define_dispatch, sender_fmt};
+use protocol::{
+    ENDPOINT_LIST, GetAngleEndpoint, GetUniqueIdEndpoint, PingX2Endpoint, SetAngle,
+    SetAngleEndpoint, TOPICS_IN_LIST, TOPICS_OUT_LIST,
+};
+use static_cell::ConstStaticCell;
+use {defmt_rtt as _, panic_probe as _};
+
+use firmware::{enable_usb_clock, usb_config};
+
+pub struct Context {
+    pwm: SimplePwm<'static, peripherals::TIM4>,
+    servo_min: u16,
+    servo_max: u16,
+}
+
+type AppDriver = usb::Driver<'static, peripherals::USB>;
+type AppStorage = WireStorage<ThreadModeRawMutex, AppDriver, 256, 256, 64, 256>;
+type BufStorage = PacketBuffers<1024, 1024>;
+type AppTx = WireTxImpl<ThreadModeRawMutex, AppDriver>;
+type AppRx = WireRxImpl<AppDriver>;
+type AppServer = Server<AppTx, AppRx, WireRxBuf, MyApp>;
+
+static PBUFS: ConstStaticCell<BufStorage> = ConstStaticCell::new(BufStorage::new());
+static STORAGE: AppStorage = AppStorage::new();
+
+const SERVO_FREQ: Hertz = Hertz(50);
+const SERVO_MIN_US: u32 = 500;
+const SERVO_MAX_US: u32 = 2500;
+
+bind_interrupts!(struct Irqs {
+    TIM4 => timer::CaptureCompareInterruptHandler<peripherals::TIM4>;
+    USB_LP_CAN1_RX0 => usb::InterruptHandler<peripherals::USB>;
+});
+
+define_dispatch! {
+    app: MyApp;
+    spawn_fn: spawn_fn;
+    tx_impl: AppTx;
+    spawn_impl: WireSpawnImpl;
+    context: Context;
+
+    endpoints: {
+        list: ENDPOINT_LIST;
+
+        | EndpointTy                | kind      | handler                       |
+        | ----------                | ----      | -------                       |
+        | PingX2Endpoint            | blocking  | pingx2_handler                |
+        | GetUniqueIdEndpoint       | blocking  | unique_id_handler             |
+        | SetAngleEndpoint          | blocking  | set_angle_handler             |
+        | GetAngleEndpoint          | blocking  | get_angle_handler             |
+    };
+    topics_in: {
+        list: TOPICS_IN_LIST;
+
+        | TopicTy                   | kind      | handler                       |
+        | ----------                | ----      | -------                       |
+    };
+    topics_out: {
+        list: TOPICS_OUT_LIST;
+    };
+}
+
+#[embassy_executor::main]
+async fn main(spawner: Spawner) {
+    let mut config = Config::default();
+    enable_usb_clock(&mut config);
+    let mut p = embassy_stm32::init(config);
+
+    spawner.must_spawn(idle());
+
+    let pbufs = PBUFS.take();
+
+    /********************************** PWM **********************************/
+    let mut pwm = SimplePwm::new(
+        p.TIM4,
+        None,
+        Some(PwmPin::new_ch2(p.PB7, OutputType::PushPull)),
+        None,
+        None,
+        SERVO_FREQ,
+        timer::low_level::CountingMode::CenterAlignedBothInterrupts,
+    );
+    let max_duty_cycle = pwm.max_duty_cycle() as u32;
+    info!("Max Duty Cycle: {}", max_duty_cycle);
+    let servo_min = max_duty_cycle * SERVO_FREQ.0 / 1_000 * SERVO_MIN_US / 1_000;
+    let servo_max = max_duty_cycle * SERVO_FREQ.0 / 1_000 * SERVO_MAX_US / 1_000;
+
+    info!("Servo min: {}, Servo max: {}", servo_min, servo_max);
+
+    pwm.ch2().enable();
+
+    /********************************** USB **********************************/
+    {
+        // BluePill board has a pull-up resistor on the D+ line.
+        // Pull the D+ pin down to send a RESET condition to the USB bus.
+        // This forced reset is needed only for development, without it host
+        // will not reset your device when you upload new firmware.
+        let _dp = Output::new(&mut p.PA12, Level::Low, Speed::Low);
+        Timer::after_millis(10).await;
+    }
+
+    // Create the driver, from the HAL.
+    let driver = usb::Driver::new(p.USB, Irqs, p.PA12, p.PA11);
+
+    // Create embassy-usb Config
+    let config = usb_config("bluepill-servo");
+
+    let context = Context {
+        pwm,
+        servo_min: servo_min as u16,
+        servo_max: servo_max as u16,
+    };
+    let (device, tx_impl, rx_impl) = STORAGE.init(driver, config, pbufs.tx_buf.as_mut_slice());
+    let dispather = MyApp::new(context, spawner.into());
+    let vkk = dispather.min_key_len();
+    let server: AppServer = Server::new(
+        tx_impl,
+        rx_impl,
+        pbufs.rx_buf.as_mut_slice(),
+        dispather,
+        vkk,
+    );
+
+    let sender = server.sender();
+
+    spawner.must_spawn(usb_task(device));
+    spawner.must_spawn(server_task(server));
+    spawner.must_spawn(logging_task(sender));
+}
+
+#[embassy_executor::task]
+async fn idle() {
+    loop {
+        embassy_futures::yield_now().await;
+    }
+}
+
+/// This handles the low level USB management
+#[embassy_executor::task]
+pub async fn usb_task(mut usb: UsbDevice<'static, AppDriver>) {
+    info!("USB started");
+    usb.run().await;
+}
+
+#[embassy_executor::task]
+async fn server_task(mut server: AppServer) {
+    loop {
+        // If the host disconnects, we'll return an error here.
+        // If this happens, just wait until the host reconnects
+        let _ = server.run().await;
+
+        // This is a workaround for the USB stack to work properly.
+        Timer::after_millis(1).await;
+    }
+}
+
+#[embassy_executor::task]
+pub async fn logging_task(sender: Sender<AppTx>) {
+    let mut ticker = Ticker::every(Duration::from_millis(1000));
+    let mut ctr = 0u16;
+    loop {
+        ticker.next().await;
+        defmt::info!("logging");
+        if ctr & 0b1 != 0 {
+            let _ = sender.log_str("Hello world!").await;
+        } else {
+            let _ = sender_fmt!(sender, "formatted: {ctr}").await;
+        }
+        ctr = ctr.wrapping_add(1);
+    }
+}
+
+fn set_angle_handler(context: &mut Context, _header: VarHeader, rqst: SetAngle) {
+    let mut duty_cycle = (context.servo_min as u32
+        + rqst.angle as u32 * (context.servo_max - context.servo_min) as u32 / 180)
+        as u16;
+    info!("Set angle: {} -> duty cycle: {}", rqst.angle, duty_cycle);
+    if duty_cycle < context.servo_min {
+        duty_cycle = context.servo_min;
+    } else if duty_cycle > context.servo_max {
+        duty_cycle = context.servo_max;
+    }
+
+    context.pwm.ch2().set_duty_cycle(duty_cycle);
+}
+
+fn get_angle_handler(context: &mut Context, _header: VarHeader, _rqst: ()) -> u8 {
+    let duty_cycle = context.pwm.ch2().current_duty_cycle();
+
+    ((duty_cycle - context.servo_min) * 180 / (context.servo_max - context.servo_min)) as u8
+}
+
+pub fn pingx2_handler(_context: &mut Context, _header: VarHeader, rqst: u32) -> u32 {
+    info!("pingx2");
+    rqst * 2
+}
+
+pub fn unique_id_handler(_context: &mut Context, _header: VarHeader, _rqst: ()) -> [u8; 12] {
+    info!("unique_id");
+    *embassy_stm32::uid::uid()
+}
