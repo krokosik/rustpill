@@ -16,7 +16,11 @@ log = { workspace = true }
 postcard-rpc = { workspace = true, features = ["use-std", "raw-nusb"] }
 postcard-schema = { workspace = true, features = ["derive"] }
 protocol = { workspace = true, features = ["use-std"] }
-pyo3 = { workspace = true, features = ["extension-module", "experimental-async", "abi3-py39"] }
+pyo3 = { workspace = true, features = [
+    "extension-module",
+    "experimental-async",
+    "abi3-py39",
+] }
 pyo3-log = { workspace = true }
 pyo3-stub-gen = { workspace = true }
 pyo3-stub-gen-derive = { workspace = true }

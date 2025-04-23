@@ -7,12 +7,29 @@ edition.workspace = true
 forced-target = "thumbv7m-none-eabi"
 
 [dependencies]
-cortex-m = { workspace = true, features = ["inline-asm", "critical-section-single-core"] }
+cortex-m = { workspace = true, features = [
+    "inline-asm",
+    "critical-section-single-core",
+] }
 cortex-m-rt = { workspace = true }
-embassy-stm32 = { workspace = true, features = ["defmt", "stm32f103c8", "unstable-pac", "memory-x", "time-driver-tim3"] }
+embassy-stm32 = { workspace = true, features = [
+    "defmt",
+    "stm32f103c8",
+    "unstable-pac",
+    "memory-x",
+    "time-driver-tim3",
+] }
 embassy-sync = { workspace = true, features = ["defmt"] }
-embassy-executor = { workspace = true, features = ["arch-cortex-m", "executor-thread", "defmt"] }
-embassy-time = { workspace = true, features = ["defmt", "defmt-timestamp-uptime", "tick-hz-32_768"] }
+embassy-executor = { workspace = true, features = [
+    "arch-cortex-m",
+    "executor-thread",
+    "defmt",
+] }
+embassy-time = { workspace = true, features = [
+    "defmt",
+    "defmt-timestamp-uptime",
+    "tick-hz-32_768",
+] }
 embassy-usb = { workspace = true, features = ["defmt"] }
 embassy-futures = { workspace = true }
 postcard = { workspace = true }
