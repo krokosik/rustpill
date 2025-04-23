@@ -11,17 +11,13 @@ name = "stub_gen"
 doc = false
 
 [dependencies]
-env_logger = "0.11.8"
-log = "0.4.27"
-postcard-rpc = { version = "0.11.9", features = ["use-std", "raw-nusb"] }
-postcard-schema = { version = "0.2.1", features = ["derive"] }
-protocol = { version = "0.1.0", path = "../protocol", features = ["use-std"] }
-pyo3 = { version = "0.24.1", features = [
-    "extension-module",
-    "experimental-async",
-    "abi3-py39",
-] }
-pyo3-log = "0.12.3"
-pyo3-stub-gen = "0.7.0"
-pyo3-stub-gen-derive = "0.7.0"
-tokio = { version = "1.44.2", features = ["macros", "time", "rt-multi-thread"] }
+env_logger = { workspace = true }
+log = { workspace = true }
+postcard-rpc = { workspace = true, features = ["use-std", "raw-nusb"] }
+postcard-schema = { workspace = true, features = ["derive"] }
+protocol = { workspace = true, features = ["use-std"] }
+pyo3 = { workspace = true, features = ["extension-module", "experimental-async", "abi3-py39"] }
+pyo3-log = { workspace = true }
+pyo3-stub-gen = { workspace = true }
+pyo3-stub-gen-derive = { workspace = true }
+tokio = { workspace = true, features = ["macros", "time", "rt-multi-thread"] }

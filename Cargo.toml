@@ -2,6 +2,37 @@
 version = "0.1.0"
 edition = "2024"
 
+[workspace.dependencies]
+cortex-m = "0.7.6"
+cortex-m-rt = "0.7.0"
+defmt = "0.3"
+defmt-rtt = "0.4"
+embassy-executor = "0.7.0"
+embassy-futures = "0.1.0"
+embassy-stm32 = "0.2.0"
+embassy-sync = "0.6.2"
+embassy-time = "0.4.0"
+embassy-usb = "0.4.0"
+embedded-hal = "1.0.0"
+heapless = { version = "0.8", default-features = false }
+nb = "1.0.0"
+panic-probe = "0.3"
+postcard = "1.1.1"
+postcard-rpc = "0.11.9"
+postcard-schema = "0.2.1"
+static_cell = "2.0.0"
+
+protocol = { version = "0.1.0", path = "protocol" }
+
+env_logger = "0.11.8"
+log = "0.4.27"
+pyo3 = "0.24.1"
+pyo3-log = "0.12.3"
+pyo3-stub-gen = "0.7.0"
+pyo3-stub-gen-derive = "0.7.0"
+serde = { version = "1.0", default-features = false }
+tokio = "1.44.2"
+
 [workspace]
 resolver = "2"
 members = ["firmware", "rustpill_clients", "protocol"]
