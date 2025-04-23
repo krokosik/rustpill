@@ -79,13 +79,18 @@ impl ServoClient {
 
     /// Send a ping to the board and return the response.
     /// A number is sent to the device, and the device is expected to return the same number times 2.
-    pub async fn pingx2(&self, id: u32) -> Result<u32, ServoError<Infallible>> {
-        let val = self.client.send_resp::<PingX2Endpoint>(&id).await?;
-        Ok(val)
+    ///
+    /// :param val: The number to send to the device.
+    /// :return: The number returned by the device: val * 2.
+    pub async fn pingx2(&self, val: u32) -> Result<u32, ServoError<Infallible>> {
+        let dbl_val = self.client.send_resp::<PingX2Endpoint>(&val).await?;
+        Ok(dbl_val)
     }
 
     /// Get the unique ID of the board.
     /// The ID is a 92-bit number, which is padded to 128 bits with zeros.
+    ///
+    /// :return: The unique ID of the board.
     pub async fn get_id(&self) -> Result<u128, ServoError<Infallible>> {
         let id = self.client.send_resp::<GetUniqueIdEndpoint>(&()).await?;
         let mut padded_id = [0u8; 16];
@@ -94,7 +99,8 @@ impl ServoClient {
     }
 
     /// Set the angle of the servo.
-    /// The angle is a number between 0 and 180.
+    ///
+    /// :param angle: The angle to set the servo to (0-180).
     pub async fn set_angle(&self, angle: u8) -> Result<(), ServoError<Infallible>> {
         self.client
             .send_resp::<protocol::SetAngleEndpoint>(&protocol::SetAngle { angle })
@@ -103,7 +109,8 @@ impl ServoClient {
     }
 
     /// Get the angle of the servo.
-    /// The angle is a number between 0 and 180.
+    ///
+    /// :return: The angle of the servo (0-180).
     pub async fn get_angle(&self) -> Result<u8, ServoError<Infallible>> {
         let angle = self
             .client
