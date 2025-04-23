@@ -11,10 +11,13 @@ class ServoClient:
     def wait_closed(self) -> None:
         ...
 
-    def pingx2(self, id:builtins.int) -> builtins.int:
+    def pingx2(self, val:builtins.int) -> builtins.int:
         r"""
         Send a ping to the board and return the response.
         A number is sent to the device, and the device is expected to return the same number times 2.
+        
+        :param val: The number to send to the device.
+        :return: The number returned by the device: val * 2.
         """
         ...
 
@@ -22,20 +25,24 @@ class ServoClient:
         r"""
         Get the unique ID of the board.
         The ID is a 92-bit number, which is padded to 128 bits with zeros.
+        
+        :return: The unique ID of the board.
         """
         ...
 
     def set_angle(self, angle:builtins.int) -> None:
         r"""
         Set the angle of the servo.
-        The angle is a number between 0 and 180.
+        
+        :param angle: The angle to set the servo to (0-180).
         """
         ...
 
     def get_angle(self) -> builtins.int:
         r"""
         Get the angle of the servo.
-        The angle is a number between 0 and 180.
+        
+        :return: The angle of the servo (0-180).
         """
         ...
 
