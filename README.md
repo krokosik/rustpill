@@ -41,3 +41,10 @@ cd rustpill_clients
 uv run maturin develop
 ```
 4. Test the commands in the `test.py` file. Make sure you use the `uv` created local virtual environment.
+
+## Wishlist
+
+- publishing to PyPI via Actions
+- more convenient async wrappers for blocking Python bindings, perhaps a macro
+- expand the firmware and port more Cube code of course
+- create async Python bindings as well and a test file with asyncio
