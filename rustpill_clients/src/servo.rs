@@ -45,36 +45,42 @@ impl<E> Into<PyErr> for ServoError<E> {
 #[pymethods]
 impl ServoClient {
     #[new]
-    #[tokio::main]
-    pub async fn new() -> Self {
-        let client = HostClient::new_raw_nusb(
-            |d| d.product_string() == Some("bluepill-servo"),
-            ERROR_PATH,
-            8,
-            VarSeqKind::Seq2,
-        );
-        let mut logsub = client.subscribe_multi::<LoggingTopic>(64).await.unwrap();
+    pub fn new() -> Self {
+        let client = pyo3_async_runtimes::tokio::get_runtime().block_on(async move {
+            let client = HostClient::new_raw_nusb(
+                |d| d.product_string() == Some("bluepill-servo"),
+                ERROR_PATH,
+                8,
+                VarSeqKind::Seq2,
+            );
 
-        // Spawn a background task to handle log messages
-        tokio::spawn(async move {
-            loop {
-                match logsub.recv().await {
-                    Ok(log) => {
-                        log::info!("FIRMWARE: {}", log);
-                    }
-                    Err(e) => {
-                        log::error!("Log subscription error: {:?}", e);
-                        break;
+            let mut logsub = client.subscribe_multi::<LoggingTopic>(64).await.unwrap();
+
+            // Spawn a background task to handle log messages
+            pyo3_async_runtimes::tokio::get_runtime().spawn(async move {
+                loop {
+                    match logsub.recv().await {
+                        Ok(log) => {
+                            log::info!("FIRMWARE: {}", log);
+                        }
+                        Err(e) => {
+                            log::error!("Log subscription error: {:?}", e);
+                            break;
+                        }
                     }
                 }
-            }
+            });
+
+            client
         });
 
         Self { client }
     }
 
-    pub async fn wait_closed(&self) {
-        self.client.wait_closed().await;
+    pub fn wait_closed(&self) {
+        pyo3_async_runtimes::tokio::get_runtime().block_on(async move {
+            self.client.wait_closed().await;
+        });
     }
 
     /// Send a ping to the board and return the response.
@@ -82,8 +88,9 @@ impl ServoClient {
     ///
     /// :param val: The number to send to the device.
     /// :return: The number returned by the device: val * 2.
-    pub async fn pingx2(&self, val: u32) -> Result<u32, ServoError<Infallible>> {
-        let dbl_val = self.client.send_resp::<PingX2Endpoint>(&val).await?;
+    pub fn pingx2(&self, val: u32) -> Result<u32, ServoError<Infallible>> {
+        let dbl_val = pyo3_async_runtimes::tokio::get_runtime()
+            .block_on(async move { self.client.send_resp::<PingX2Endpoint>(&val).await })?;
         Ok(dbl_val)
     }
 
@@ -91,8 +98,9 @@ impl ServoClient {
     /// The ID is a 92-bit number, which is padded to 128 bits with zeros.
     ///
     /// :return: The unique ID of the board.
-    pub async fn get_id(&self) -> Result<u128, ServoError<Infallible>> {
-        let id = self.client.send_resp::<GetUniqueIdEndpoint>(&()).await?;
+    pub fn get_id(&self) -> Result<u128, ServoError<Infallible>> {
+        let id = pyo3_async_runtimes::tokio::get_runtime()
+            .block_on(async move { self.client.send_resp::<GetUniqueIdEndpoint>(&()).await })?;
         let mut padded_id = [0u8; 16];
         padded_id[..12].copy_from_slice(&id);
         Ok(u128::from_le_bytes(padded_id))
@@ -101,21 +109,24 @@ impl ServoClient {
     /// Set the angle of the servo.
     ///
     /// :param angle: The angle to set the servo to (0-180).
-    pub async fn set_angle(&self, angle: u8) -> Result<(), ServoError<Infallible>> {
-        self.client
-            .send_resp::<protocol::SetAngleEndpoint>(&protocol::SetAngle { angle })
-            .await?;
+    pub fn set_angle(&self, angle: u8) -> Result<(), ServoError<Infallible>> {
+        pyo3_async_runtimes::tokio::get_runtime().block_on(async move {
+            self.client
+                .send_resp::<protocol::SetAngleEndpoint>(&protocol::SetAngle { angle })
+                .await
+        })?;
         Ok(())
     }
 
     /// Get the angle of the servo.
     ///
     /// :return: The angle of the servo (0-180).
-    pub async fn get_angle(&self) -> Result<u8, ServoError<Infallible>> {
-        let angle = self
-            .client
-            .send_resp::<protocol::GetAngleEndpoint>(&())
-            .await?;
+    pub fn get_angle(&self) -> Result<u8, ServoError<Infallible>> {
+        let angle = pyo3_async_runtimes::tokio::get_runtime().block_on(async move {
+            self.client
+                .send_resp::<protocol::GetAngleEndpoint>(&())
+                .await
+        })?;
         Ok(angle)
     }
 }
