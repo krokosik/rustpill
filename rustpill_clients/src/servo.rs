@@ -58,6 +58,7 @@ impl ServoClient {
 
             // Spawn a background task to handle log messages
             pyo3_async_runtimes::tokio::get_runtime().spawn(async move {
+                log::info!("Starting log subscription");
                 loop {
                     match logsub.recv().await {
                         Ok(log) => {
