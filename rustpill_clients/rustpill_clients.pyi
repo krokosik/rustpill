@@ -2,12 +2,15 @@
 # ruff: noqa: E501, F401
 
 import builtins
+import typing
 
 class ServoClient:
     r"""
-    This class communicates with Bluepill Servo Rust firmware.
+    This class communicates with Bluepill Servo Rust firmware. You can pass a port string to the
+    constructor to connect to a specific port. If no port is passed, it will try to connect to the first
+    available device by product string.
     """
-    def __new__(cls,): ...
+    def __new__(cls,port:typing.Optional[builtins.str]): ...
     def wait_closed(self) -> None:
         ...
 

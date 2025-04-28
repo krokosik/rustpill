@@ -8,7 +8,12 @@ use pyo3::prelude::*;
 use pyo3_stub_gen::derive::*;
 use std::convert::Infallible;
 
-/// This class communicates with Bluepill Servo Rust firmware.
+#[cfg(target_os = "linux")]
+use std::path::PathBuf;
+
+/// This class communicates with Bluepill Servo Rust firmware. You can pass a port string to the
+/// constructor to connect to a specific port. If no port is passed, it will try to connect to the first
+/// available device by product string.
 #[gen_stub_pyclass]
 #[pyclass]
 pub struct ServoClient {
@@ -40,15 +45,29 @@ impl<E> Into<PyErr> for ServoError<E> {
     }
 }
 
-// ---
 #[gen_stub_pymethods]
 #[pymethods]
 impl ServoClient {
     #[new]
-    pub fn new() -> Self {
-        let client = pyo3_async_runtimes::tokio::get_runtime().block_on(async move {
+    pub fn new(port: Option<&str>) -> Self {
+        pyo3_async_runtimes::tokio::get_runtime().block_on(async move {
             let client = HostClient::new_raw_nusb(
-                |d| d.product_string() == Some("bluepill-servo"),
+                |d| {
+                    if port.is_some() {
+                        #[cfg(target_os = "windows")]
+                        {
+                            assert!(port.unwrap().starts_with("COM"));
+                            format!("COM{}", d.port_number()) == port.unwrap()
+                        }
+
+                        #[cfg(target_os = "linux")]
+                        {
+                            d.path().0 == PathBuf::from(port.unwrap())
+                        }
+                    } else {
+                        d.product_string() == Some("bluepill-servo")
+                    }
+                },
                 ERROR_PATH,
                 8,
                 VarSeqKind::Seq2,
@@ -72,10 +91,8 @@ impl ServoClient {
                 }
             });
 
-            client
-        });
-
-        Self { client }
+            Self { client }
+        })
     }
 
     pub fn wait_closed(&self) {
@@ -134,6 +151,6 @@ impl ServoClient {
 
 impl Default for ServoClient {
     fn default() -> Self {
-        Self::new()
+        Self::new(None)
     }
 }
