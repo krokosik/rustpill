@@ -14,12 +14,14 @@ fn main() {
 }
 
 fn try_main() -> Result<(), DynError> {
+    dotenvy::dotenv().ok();
     let task = env::args().nth(1);
     let args = env::args().skip(2).collect::<Vec<_>>();
 
     match (task.as_deref(), args.as_slice()) {
         (Some("flash"), [binary]) => flash(binary)?,
         (Some("pygen"), _) => build_bindings()?,
+        (Some("publish"), _) => publish()?,
         _ => print_help(),
     }
     Ok(())
@@ -31,6 +33,7 @@ fn print_help() {
 
 flash <name>            flashes the firmware binary to the device
 pygen                   generates the Python bindings
+publish                 publishes the Python bindings to PyPI
 "
     )
 }
@@ -71,7 +74,40 @@ fn flash(binary: &str) -> Result<(), DynError> {
     Ok(())
 }
 
+fn publish() -> Result<(), DynError> {
+    build_stubs()?;
+
+    let mut cmd = Command::new("uv");
+
+    cmd.current_dir(bindings_dir());
+    cmd.arg("run")
+        .arg("maturin")
+        .arg("publish")
+        .arg("--no-sdist");
+
+    let status = cmd.status()?;
+    if !status.success() {
+        return Err(format!("Failed to build bindings: {}", status).into());
+    }
+    Ok(())
+}
+
 fn build_bindings() -> Result<(), DynError> {
+    build_stubs()?;
+
+    let mut cmd = Command::new("uv");
+
+    cmd.current_dir(bindings_dir());
+    cmd.arg("run").arg("maturin").arg("develop");
+
+    let status = cmd.status()?;
+    if !status.success() {
+        return Err(format!("Failed to build bindings: {}", status).into());
+    }
+    Ok(())
+}
+
+fn build_stubs() -> Result<(), DynError> {
     let cargo = env::var("CARGO").unwrap_or_else(|_| "cargo".to_string());
     let mut cmd = Command::new(cargo);
 
@@ -86,16 +122,6 @@ fn build_bindings() -> Result<(), DynError> {
     let status = cmd.status()?;
     if !status.success() {
         return Err(format!("Failed to build type stubs: {}", status).into());
-    }
-
-    let mut cmd = Command::new("uv");
-
-    cmd.current_dir(bindings_dir());
-    cmd.arg("run").arg("maturin").arg("develop");
-
-    let status = cmd.status()?;
-    if !status.success() {
-        return Err(format!("Failed to build bindings: {}", status).into());
     }
     Ok(())
 }

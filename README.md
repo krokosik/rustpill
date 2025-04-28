@@ -41,8 +41,8 @@ Here is a brief description of each crate:
 
 ## Wishlist
 
-- publishing to PyPI via Actions
+- more robust USB device selection
 - more convenient async wrappers for blocking Python bindings, perhaps a macro
-- expand the firmware and port more Cube code of course
+- expand the firmware and port more Cube code
 - create async Python bindings as well and a test file with asyncio
 - fix the `firmare` runner, which is ignored when using `forced-target`, i.e. find a way to make the Cargo workspace work nicer. [cargo issue](https://github.com/rust-lang/cargo/issues/14833)
