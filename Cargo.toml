@@ -1,5 +1,5 @@
 [workspace.package]
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 license-file = "LICENSE"
 repository = "https://github.com/krokosik/rustpill"
@@ -43,3 +43,9 @@ dotenvy = "0.15.7"
 [workspace]
 resolver = "2"
 members = ["firmware", "rustpill_clients", "protocol", "xtask"]
+
+[profile.dev.package.firmware]
+opt-level = "s"
+
+[profile.release.package.firmware]
+debug = 2

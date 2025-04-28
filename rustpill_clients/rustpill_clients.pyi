@@ -10,7 +10,7 @@ class ServoClient:
     constructor to connect to a specific port. If no port is passed, it will try to connect to the first
     available device by product string.
     """
-    def __new__(cls,port:typing.Optional[builtins.str]): ...
+    def __new__(cls,port:typing.Optional[builtins.str]=None): ...
     def wait_closed(self) -> None:
         ...
 
@@ -62,14 +62,6 @@ class ServoClient:
         Set the maximum duty cycle of the servo.
             
         :param max: The maximum duty cycle to set the servo to.
-        """
-        ...
-
-    def get_pwm_config(self) -> ServoPwmConfig:
-        r"""
-        Get the PWM configuration of the servo.
-        
-        :return: The PWM configuration of the servo.
         """
         ...
 

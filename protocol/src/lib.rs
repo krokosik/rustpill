@@ -22,7 +22,6 @@ endpoints! {
     | GetAngleEndpoint          | ()            | u8                    | "servo/get_angle" |
     | SetServoMinEndpoint       | u32           | ()                    | "servo/set_min"   |
     | SetServoMaxEndpoint       | u32           | ()                    | "servo/set_max"   |
-    | ServoPwmConfigEndpoint    | ()            | ServoPwmConfig        | "servo/config"    |
 }
 
 topics! {
@@ -39,8 +38,8 @@ topics! {
     | -------                   | ---------     | ----              | ---                           |
 }
 
-#[cfg_attr(feature = "use-std", gen_stub_pyclass, pyclass)]
 #[derive(Serialize, Deserialize, Schema, Debug, PartialEq)]
+#[cfg_attr(feature = "use-std", gen_stub_pyclass, pyclass)]
 pub struct ServoPwmConfig {
     pub min_servo_duty_cycle: u16,
     pub max_servo_duty_cycle: u16,
