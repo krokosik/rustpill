@@ -130,7 +130,7 @@ impl ServoClient {
     pub fn set_angle(&self, angle: u8) -> Result<(), ServoError<Infallible>> {
         pyo3_async_runtimes::tokio::get_runtime().block_on(async move {
             self.client
-                .send_resp::<protocol::SetAngleEndpoint>(&protocol::SetAngle { angle })
+                .send_resp::<protocol::SetAngleEndpoint>(&angle)
                 .await
         })?;
         Ok(())
@@ -146,6 +146,42 @@ impl ServoClient {
                 .await
         })?;
         Ok(angle)
+    }
+
+    /// Set the minimum duty cycle of the servo.
+    ///
+    /// :param min: The minimum duty cycle to set the servo to.
+    pub fn set_servo_min(&self, min: u32) -> Result<(), ServoError<Infallible>> {
+        pyo3_async_runtimes::tokio::get_runtime().block_on(async move {
+            self.client
+                .send_resp::<protocol::SetServoMinEndpoint>(&min)
+                .await
+        })?;
+        Ok(())
+    }
+
+    /// Set the maximum duty cycle of the servo.
+    ///     
+    /// :param max: The maximum duty cycle to set the servo to.
+    pub fn set_servo_max(&self, max: u32) -> Result<(), ServoError<Infallible>> {
+        pyo3_async_runtimes::tokio::get_runtime().block_on(async move {
+            self.client
+                .send_resp::<protocol::SetServoMaxEndpoint>(&max)
+                .await
+        })?;
+        Ok(())
+    }
+
+    /// Get the PWM configuration of the servo.
+    ///
+    /// :return: The PWM configuration of the servo.
+    pub fn get_pwm_config(&self) -> Result<protocol::ServoPwmConfig, ServoError<Infallible>> {
+        let config = pyo3_async_runtimes::tokio::get_runtime().block_on(async move {
+            self.client
+                .send_resp::<protocol::ServoPwmConfigEndpoint>(&())
+                .await
+        })?;
+        Ok(config)
     }
 }
 

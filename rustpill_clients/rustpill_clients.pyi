@@ -49,4 +49,31 @@ class ServoClient:
         """
         ...
 
+    def set_servo_min(self, min:builtins.int) -> None:
+        r"""
+        Set the minimum duty cycle of the servo.
+        
+        :param min: The minimum duty cycle to set the servo to.
+        """
+        ...
+
+    def set_servo_max(self, max:builtins.int) -> None:
+        r"""
+        Set the maximum duty cycle of the servo.
+            
+        :param max: The maximum duty cycle to set the servo to.
+        """
+        ...
+
+    def get_pwm_config(self) -> ServoPwmConfig:
+        r"""
+        Get the PWM configuration of the servo.
+        
+        :return: The PWM configuration of the servo.
+        """
+        ...
+
+
+class ServoPwmConfig:
+    ...
 

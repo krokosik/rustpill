@@ -1518,6 +1518,9 @@ version = "0.1.0"
 dependencies = [
  "postcard-rpc",
  "postcard-schema",
+ "pyo3",
+ "pyo3-stub-gen",
+ "pyo3-stub-gen-derive",
  "serde",
 ]
 

@@ -19,8 +19,9 @@ use postcard_rpc::server::impls::embassy_usb_v0_4::dispatch_impl::{
 use postcard_rpc::server::{Dispatch, Sender, Server};
 use postcard_rpc::{define_dispatch, sender_fmt};
 use protocol::{
-    ENDPOINT_LIST, GetAngleEndpoint, GetUniqueIdEndpoint, PingX2Endpoint, SetAngle,
-    SetAngleEndpoint, TOPICS_IN_LIST, TOPICS_OUT_LIST,
+    GetAngleEndpoint, GetUniqueIdEndpoint, PingX2Endpoint, SERVO_ENDPOINT_LIST, ServoPwmConfig,
+    ServoPwmConfigEndpoint, SetAngleEndpoint, SetServoMaxEndpoint, SetServoMinEndpoint,
+    TOPICS_IN_LIST, TOPICS_OUT_LIST,
 };
 use static_cell::ConstStaticCell;
 use {defmt_rtt as _, panic_probe as _};
@@ -60,7 +61,7 @@ define_dispatch! {
     context: Context;
 
     endpoints: {
-        list: ENDPOINT_LIST;
+        list: SERVO_ENDPOINT_LIST;
 
         | EndpointTy                | kind      | handler                       |
         | ----------                | ----      | -------                       |
@@ -68,6 +69,9 @@ define_dispatch! {
         | GetUniqueIdEndpoint       | blocking  | unique_id_handler             |
         | SetAngleEndpoint          | blocking  | set_angle_handler             |
         | GetAngleEndpoint          | blocking  | get_angle_handler             |
+        | SetServoMinEndpoint       | blocking  | set_servo_min_handler         |
+        | SetServoMaxEndpoint       | blocking  | set_servo_max_handler         |
+        | ServoPwmConfigEndpoint    | blocking  | get_pwm_config                |
     };
     topics_in: {
         list: TOPICS_IN_LIST;
@@ -186,11 +190,11 @@ pub async fn logging_task(sender: Sender<AppTx>) {
     }
 }
 
-fn set_angle_handler(context: &mut Context, _header: VarHeader, rqst: SetAngle) {
+fn set_angle_handler(context: &mut Context, _header: VarHeader, rqst: u8) {
     let mut duty_cycle = (context.servo_min as u32
-        + rqst.angle as u32 * (context.servo_max - context.servo_min) as u32 / 180)
+        + rqst as u32 * (context.servo_max - context.servo_min) as u32 / 180)
         as u16;
-    info!("Set angle: {} -> duty cycle: {}", rqst.angle, duty_cycle);
+    info!("Set angle: {} -> duty cycle: {}", rqst, duty_cycle);
     if duty_cycle < context.servo_min {
         duty_cycle = context.servo_min;
     } else if duty_cycle > context.servo_max {
@@ -209,12 +213,39 @@ fn get_angle_handler(context: &mut Context, _header: VarHeader, _rqst: ()) -> u8
         as u8
 }
 
-pub fn pingx2_handler(_context: &mut Context, _header: VarHeader, rqst: u32) -> u32 {
+fn set_servo_min_handler(context: &mut Context, _header: VarHeader, rqst: u32) {
+    let max_duty_cycle = context.pwm.max_duty_cycle() as u32;
+    info!("Max Duty Cycle: {}", max_duty_cycle);
+    let servo_min = max_duty_cycle * SERVO_FREQ.0 / 1_000 * rqst / 1_000;
+    info!("Set servo min duty cycle: {}", servo_min);
+    context.servo_min = servo_min as u16;
+}
+
+fn set_servo_max_handler(context: &mut Context, _header: VarHeader, rqst: u32) {
+    let max_duty_cycle = context.pwm.max_duty_cycle() as u32;
+    info!("Max Duty Cycle: {}", max_duty_cycle);
+    let servo_max = max_duty_cycle * SERVO_FREQ.0 / 1_000 * rqst / 1_000;
+    info!("Set servo max duty cycle: {}", servo_max);
+    context.servo_max = servo_max as u16;
+}
+
+fn get_pwm_config(context: &mut Context, _header: VarHeader, _rqst: ()) -> ServoPwmConfig {
+    info!("Get PWM config");
+    ServoPwmConfig {
+        min_servo_duty_cycle: context.servo_min,
+        max_servo_duty_cycle: context.servo_max,
+        servo_frequency: SERVO_FREQ.0,
+        max_duty_cycle: context.pwm.max_duty_cycle(),
+        current_duty_cycle: context.pwm.ch2().current_duty_cycle(),
+    }
+}
+
+fn pingx2_handler(_context: &mut Context, _header: VarHeader, rqst: u32) -> u32 {
     info!("pingx2");
     rqst * 2
 }
 
-pub fn unique_id_handler(_context: &mut Context, _header: VarHeader, _rqst: ()) -> [u8; 12] {
+fn unique_id_handler(_context: &mut Context, _header: VarHeader, _rqst: ()) -> [u8; 12] {
     info!("unique_id");
     *embassy_stm32::uid::uid()
 }

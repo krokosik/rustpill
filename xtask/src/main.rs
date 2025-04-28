@@ -44,11 +44,12 @@ fn flash(binary: &str) -> Result<(), DynError> {
 
     let defmt_log = env::var("DEFMT_LOG").unwrap_or_else(|_| "info".to_string());
 
-    cmd.current_dir(firmware_dir())
+    cmd.current_dir(project_root())
         .env("DEFMT_LOG", defmt_log)
         .arg("build")
+        .arg("-p")
+        .arg("firmware")
         .arg("--release")
-        .arg("--target=thumbv7m-none-eabi")
         .arg(format!("--bin={}", binary));
 
     let status = cmd.status()?;
