@@ -5,6 +5,9 @@ name = "firmware"
 version.workspace = true
 edition.workspace = true
 forced-target = "thumbv7m-none-eabi"
+license-file.workspace = true
+description = "Firmware binaries"
+repository.workspace = true
 
 [dependencies]
 cortex-m = { workspace = true, features = [

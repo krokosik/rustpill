@@ -1,6 +1,9 @@
 [workspace.package]
 version = "0.1.0"
 edition = "2024"
+license-file = "LICENSE"
+repository = "https://github.com/krokosik/rustpill"
+description = "RustPill firmware and clients"
 
 [workspace.dependencies]
 cortex-m = "0.7.6"
