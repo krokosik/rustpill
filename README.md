@@ -18,28 +18,25 @@ This is a WIP implementation/exploration of using modern Rust technologies for m
 
 ## Workspace
 
-This repo is structued into 3 distinct crates that are managed together with a Cargo workspace. To run commands in one of them, just use 
+This repo is structued into 4 distinct crates that are managed together with a Cargo workspace. To run commands in one of them, just use 
 
 ```
 cargo -p <package> <command>
 ```
 
+Unfortunately, due to limitations of cargo, the workspace uses nightly features for multi target integration. Some things do not work perfectly, so we use `xtasks` for running commands rather than pure cargo.
 Here is a brief description of each crate:
 
 - **protocol** here we define statically typed message formats, endpoints and topics (streamed data). It is built automatically when building the dependent host and firmware crates.
 - **firmware** MCU codes with different functionalities. Each binary is one firmware and you select which one you want to flash by adding `--bin <name>` to the flash command.
 - **rustpill_clients** the host crate where Rust clients are defined and then Python bindings are generated on top of them.
+- **xtasks** Rust written build scripts, kind of like `make` [more info](https://github.com/matklad/cargo-xtask)
 
 ## How to start
 
 1. Connect the Bluepill board via ST-LINK
-2. Flash it with `cargo run -p firmware --bin servo` or any other binary
-3. (optional) Build Python type stubs with `cargo run -p rustpill_clients --bin stub_gen`
-4. Build Python bindings with the Maturin build tool:
-```
-cd rustpill_clients
-uv run maturin develop
-```
+2. Flash it with `cargo xtask flash servo` or any other binary
+3. Build Python bindings with the Maturin build tool: `cargo xtask pygen`
 4. Test the commands in the `test.py` file. Make sure you use the `uv` created local virtual environment.
 
 ## Wishlist
@@ -48,3 +45,4 @@ uv run maturin develop
 - more convenient async wrappers for blocking Python bindings, perhaps a macro
 - expand the firmware and port more Cube code of course
 - create async Python bindings as well and a test file with asyncio
+- fix the `firmare` runner, which is ignored when using `forced-target`, i.e. find a way to make the Cargo workspace work nicer. [cargo issue](https://github.com/rust-lang/cargo/issues/14833)

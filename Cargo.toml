@@ -36,7 +36,7 @@ tokio = "1.44.2"
 
 [workspace]
 resolver = "2"
-members = ["firmware", "rustpill_clients", "protocol"]
+members = ["firmware", "rustpill_clients", "protocol", "xtask"]
 
 [profile.dev.package.firmware]
 opt-level = "s"
