@@ -419,12 +419,12 @@ dependencies = [
 
 [[package]]
 name = "defmt-rtt"
-version = "0.4.2"
+version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c6eca0aae8aa2cf8333200ecbd236274697bc0a394765c858b3d9372eb1abcfa"
+checksum = "b2cac3b8a5644a9e02b75085ebad3b6deafdbdbdec04bb25086523828aa4dfd1"
 dependencies = [
  "critical-section",
- "defmt 0.3.100",
+ "defmt 1.0.1",
 ]
 
 [[package]]
@@ -800,7 +800,7 @@ version = "0.1.0"
 dependencies = [
  "cortex-m",
  "cortex-m-rt",
- "defmt 0.3.100",
+ "defmt 1.0.1",
  "defmt-rtt",
  "embassy-executor",
  "embassy-futures",
@@ -1365,12 +1365,12 @@ checksum = "b15813163c1d831bf4a13c3610c05c0d03b39feb07f7e09fa234dac9b15aaf39"
 
 [[package]]
 name = "panic-probe"
-version = "0.3.2"
+version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4047d9235d1423d66cc97da7d07eddb54d4f154d6c13805c6d0793956f4f25b0"
+checksum = "fd402d00b0fb94c5aee000029204a46884b1262e0c443f166d86d2c0747e1a1a"
 dependencies = [
  "cortex-m",
- "defmt 0.3.100",
+ "defmt 1.0.1",
 ]
 
 [[package]]
@@ -1622,12 +1622,13 @@ dependencies = [
 
 [[package]]
 name = "pyo3-stub-gen"
-version = "0.7.0"
+version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ca7c2d6e22cba51cc9766b6dee4087218cc445fdf99db62fa4f269e074351b46"
+checksum = "3c6b7479cc89fbe842ab5b1ee5ee19863dc166777c4c84ebee1effb5265baa62"
 dependencies = [
  "anyhow",
  "chrono",
+ "indexmap",
  "inventory",
  "itertools",
  "log",
@@ -1642,10 +1643,11 @@ dependencies = [
 
 [[package]]
 name = "pyo3-stub-gen-derive"
-version = "0.7.0"
+version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3ee49d727163163a0c6fc3fee4636c8b5c82e1bb868e85cf411be7ae9e4e5b40"
+checksum = "f44e18cc519a39615545239d1ab168e74353f3c8c5a222d03e07393461d6ceb9"
 dependencies = [
+ "heck",
  "proc-macro2",
  "quote",
  "syn 2.0.100",
