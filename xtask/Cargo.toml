@@ -4,4 +4,4 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
-dotenvy = "0.15.7"
+dotenvy = { workspace = true }
