@@ -86,8 +86,6 @@ async fn main(spawner: Spawner) {
     enable_usb_clock(&mut config);
     let mut p = embassy_stm32::init(config);
 
-    spawner.must_spawn(idle());
-
     let pbufs = PBUFS.take();
 
     /********************************** PWM **********************************/
@@ -141,11 +139,9 @@ async fn main(spawner: Spawner) {
         vkk,
     );
 
-    let sender = server.sender();
-
     spawner.must_spawn(usb_task(device));
     spawner.must_spawn(server_task(server));
-    spawner.must_spawn(logging_task(sender));
+    spawner.must_spawn(idle());
 }
 
 #[embassy_executor::task]
@@ -207,7 +203,10 @@ fn set_angle_handler(context: &mut Context, _header: VarHeader, rqst: SetAngle) 
 fn get_angle_handler(context: &mut Context, _header: VarHeader, _rqst: ()) -> u8 {
     let duty_cycle = context.pwm.ch2().current_duty_cycle();
 
-    ((duty_cycle - context.servo_min) * 180 / (context.servo_max - context.servo_min)) as u8
+    info!("Get angle: duty cycle: {}", duty_cycle);
+
+    ((duty_cycle - context.servo_min) as u32 * 180 / (context.servo_max - context.servo_min) as u32)
+        as u8
 }
 
 pub fn pingx2_handler(_context: &mut Context, _header: VarHeader, rqst: u32) -> u32 {

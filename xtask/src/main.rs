@@ -39,7 +39,7 @@ fn flash(binary: &str) -> Result<(), DynError> {
     let cargo = env::var("CARGO").unwrap_or_else(|_| "cargo".to_string());
     let mut cmd = Command::new(cargo);
 
-    let defmt_log = env::var("DEFMT_LOG").unwrap_or_else(|_| "trace".to_string());
+    let defmt_log = env::var("DEFMT_LOG").unwrap_or_else(|_| "info".to_string());
 
     cmd.current_dir(firmware_dir())
         .env("DEFMT_LOG", defmt_log)
@@ -53,7 +53,7 @@ fn flash(binary: &str) -> Result<(), DynError> {
         return Err(format!("Failed to build: {}", status).into());
     }
 
-    let target_bin = firmware_dir()
+    let target_bin = project_root()
         .join("target")
         .join("thumbv7m-none-eabi")
         .join("release")
