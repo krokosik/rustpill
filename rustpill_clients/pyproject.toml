@@ -4,7 +4,6 @@ version = "0.1.0"
 description = "Add your description here"
 readme = "./README.md"
 requires-python = ">=3.9"
-dependencies = ["ipykernel>=6.29.5"]
 classifiers = [
     "Programming Language :: Rust",
     "Programming Language :: Python :: Implementation :: CPython",
@@ -22,3 +21,6 @@ classifiers = [
 [build-system]
 requires = ["maturin>=1,<2"]
 build-backend = "maturin"
+
+[dependency-groups]
+dev = ["ipykernel>=6.29.5"]

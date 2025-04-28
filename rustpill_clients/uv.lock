@@ -515,12 +515,16 @@ wheels = [
 name = "rustpill-clients"
 version = "0.1.0"
 source = { editable = "." }
-dependencies = [
+
+[package.dev-dependencies]
+dev = [
     { name = "ipykernel" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "ipykernel", specifier = ">=6.29.5" }]
+
+[package.metadata.requires-dev]
+dev = [{ name = "ipykernel", specifier = ">=6.29.5" }]
 
 [[package]]
 name = "six"
