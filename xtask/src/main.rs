@@ -78,13 +78,9 @@ fn flash(binary: &str) -> Result<(), DynError> {
 fn publish() -> Result<(), DynError> {
     build_stubs()?;
 
-    let mut cmd = Command::new("uv");
+    let mut cmd = pycmd();
 
-    cmd.current_dir(bindings_dir());
-    cmd.arg("run")
-        .arg("maturin")
-        .arg("publish")
-        .arg("--no-sdist");
+    cmd.arg("maturin").arg("publish").arg("--no-sdist");
 
     let status = cmd.status()?;
     if !status.success() {
@@ -96,10 +92,9 @@ fn publish() -> Result<(), DynError> {
 fn build_bindings() -> Result<(), DynError> {
     build_stubs()?;
 
-    let mut cmd = Command::new("uv");
+    let mut cmd = pycmd();
 
-    cmd.current_dir(bindings_dir());
-    cmd.arg("run").arg("maturin").arg("develop");
+    cmd.arg("maturin").arg("develop");
 
     let status = cmd.status()?;
     if !status.success() {
@@ -127,12 +122,11 @@ fn build_stubs() -> Result<(), DynError> {
     Ok(())
 }
 
-fn firmware_dir() -> PathBuf {
-    project_root().join("firmware")
-}
-
-fn bindings_dir() -> PathBuf {
-    project_root().join("rustpill_clients")
+fn pycmd() -> Command {
+    let mut cmd = Command::new("uv");
+    cmd.current_dir(project_root().join("rustpill_clients"));
+    cmd.arg("run");
+    cmd
 }
 
 fn project_root() -> PathBuf {
