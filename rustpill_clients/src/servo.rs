@@ -49,6 +49,7 @@ impl<E> Into<PyErr> for ServoError<E> {
 #[pymethods]
 impl ServoClient {
     #[new]
+    #[pyo3(signature = (port = None))]
     pub fn new(port: Option<&str>) -> Self {
         pyo3_async_runtimes::tokio::get_runtime().block_on(async move {
             let client = HostClient::new_raw_nusb(
@@ -170,18 +171,6 @@ impl ServoClient {
                 .await
         })?;
         Ok(())
-    }
-
-    /// Get the PWM configuration of the servo.
-    ///
-    /// :return: The PWM configuration of the servo.
-    pub fn get_pwm_config(&self) -> Result<protocol::ServoPwmConfig, ServoError<Infallible>> {
-        let config = pyo3_async_runtimes::tokio::get_runtime().block_on(async move {
-            self.client
-                .send_resp::<protocol::ServoPwmConfigEndpoint>(&())
-                .await
-        })?;
-        Ok(config)
     }
 }
 
