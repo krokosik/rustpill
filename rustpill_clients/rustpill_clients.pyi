@@ -53,7 +53,7 @@ class ServoClient:
         r"""
         Set the minimum duty cycle of the servo.
         
-        :param min: The minimum duty cycle to set the servo to.
+        :param min: The minimum duty cycle to set the servo to in microseconds.
         """
         ...
 
@@ -61,7 +61,7 @@ class ServoClient:
         r"""
         Set the maximum duty cycle of the servo.
             
-        :param max: The maximum duty cycle to set the servo to.
+        :param max: The maximum duty cycle to set the servo to in microseconds.
         """
         ...
 

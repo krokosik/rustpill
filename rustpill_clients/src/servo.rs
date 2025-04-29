@@ -151,7 +151,7 @@ impl ServoClient {
 
     /// Set the minimum duty cycle of the servo.
     ///
-    /// :param min: The minimum duty cycle to set the servo to.
+    /// :param min: The minimum duty cycle to set the servo to in microseconds.
     pub fn set_servo_min(&self, min: u32) -> Result<(), ServoError<Infallible>> {
         pyo3_async_runtimes::tokio::get_runtime().block_on(async move {
             self.client
@@ -163,7 +163,7 @@ impl ServoClient {
 
     /// Set the maximum duty cycle of the servo.
     ///     
-    /// :param max: The maximum duty cycle to set the servo to.
+    /// :param max: The maximum duty cycle to set the servo to in microseconds.
     pub fn set_servo_max(&self, max: u32) -> Result<(), ServoError<Infallible>> {
         pyo3_async_runtimes::tokio::get_runtime().block_on(async move {
             self.client
