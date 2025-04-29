@@ -33,39 +33,56 @@ class ServoClient:
         """
         ...
 
-    def set_angle(self, angle:builtins.int) -> None:
+    def set_angle(self, channel:builtins.int, angle:builtins.int) -> None:
         r"""
         Set the angle of the servo.
         
+        :param channel: The channel to set the servo on (1-4), corresponding to PWM channels on pins PB6-PB9.
         :param angle: The angle to set the servo to (0-180).
         """
         ...
 
-    def get_angle(self) -> builtins.int:
+    def get_angle(self, channel:builtins.int) -> builtins.int:
         r"""
-        Get the angle of the servo.
+        Get the angle of the servo on channel 1-4.
         
         :return: The angle of the servo (0-180).
         """
         ...
 
-    def set_servo_min(self, min:builtins.int) -> None:
+    def configure_channel(self, channel:builtins.int, enabled:typing.Optional[builtins.bool]=None, current_duty_cycle:typing.Optional[builtins.int]=None, min_angle_duty_cycle:typing.Optional[builtins.int]=None, max_angle_duty_cycle:typing.Optional[builtins.int]=None) -> None:
         r"""
-        Set the minimum duty cycle of the servo.
+        Configure the servo channel.
+        This function sets the minimum and maximum duty cycle for the servo channel,
+        which corresponds to the minimum and maximum angle. Leave arguments as None to use
+        to not change them on device.
         
-        :param min: The minimum duty cycle to set the servo to in microseconds.
+        :param channel: The channel to configure (1-4).
+        :param enabled: Whether the channel is enabled or not. Board boots with all channels disabled.
+        :param current_duty_cycle: The current duty cycle of the channel. Set to 0 on boot.
+        :param min_angle_duty_cycle: The minimum duty cycle for the channel. By default uses values corresponding to a pulse width of 500us.
+        :param max_angle_duty_cycle: The maximum duty cycle for the channel. By default uses values corresponding to a pulse width of 2500us.
         """
         ...
 
-    def set_servo_max(self, max:builtins.int) -> None:
+    def get_config(self) -> builtins.str:
         r"""
-        Set the maximum duty cycle of the servo.
-            
-        :param max: The maximum duty cycle to set the servo to in microseconds.
+        Get the servo configuration.
+        This function returns the current configuration of the servo channels as a JSON string.
+        It needs to be formatted using `json.loads()` in Python.
+        :return: The servo configuration as a JSON string.
         """
         ...
 
+    def set_frequency(self, frequency:builtins.int) -> None:
+        r"""
+        Set the frequency of the PWM signal.
+        This function sets the frequency of the PWM signal for all channels.
+        The frequency is set in Hz, default on device is 50 Hz. Note that all
+        channels will be disabled when the frequency is changed, as the max duty cycle
+        changes and settings need to be readjusted.
+        :param frequency: The frequency to set in Hz.
+        """
+        ...
 
-class ServoPwmConfig:
-    ...
 

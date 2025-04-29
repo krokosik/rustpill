@@ -19,8 +19,8 @@ use postcard_rpc::server::{Dispatch, Sender, Server};
 use postcard_rpc::{define_dispatch, sender_fmt};
 use protocol::{
     ConfigureChannel, GetAngleEndpoint, GetServoConfig, GetUniqueIdEndpoint, PingX2Endpoint,
-    PwmChannel, SERVO_ENDPOINT_LIST, ServoChannelConfig, ServoConfig, SetAngleEndpoint,
-    SetFrequencyEndpoint, TOPICS_IN_LIST, TOPICS_OUT_LIST,
+    PwmChannel, SERVO_ENDPOINT_LIST, ServoChannelConfig, ServoChannelConfigRqst, ServoConfig,
+    SetAngleEndpoint, SetFrequencyEndpoint, TOPICS_IN_LIST, TOPICS_OUT_LIST,
 };
 use static_cell::ConstStaticCell;
 use {defmt_rtt as _, panic_probe as _};
@@ -249,21 +249,32 @@ fn unique_id_handler(_context: &mut Context, _header: VarHeader, _rqst: ()) -> [
 fn configure_channel_handler(
     context: &mut Context,
     _header: VarHeader,
-    rqst: (PwmChannel, ServoChannelConfig),
+    rqst: (PwmChannel, ServoChannelConfigRqst),
 ) {
     defmt::info!("configure_channel");
 
     let (channel, config) = rqst;
     let mut ch = get_channel(&mut context.pwm, channel);
-    ch.set_duty_cycle(config.current_duty_cycle);
 
-    if config.enabled {
-        ch.enable();
-    } else {
-        ch.disable();
+    if let Some(current_dc) = config.current_duty_cycle {
+        ch.set_duty_cycle(current_dc);
+        context.config.channels[channel as usize].current_duty_cycle = current_dc;
     }
 
-    context.config.channels[channel as usize] = config;
+    if let Some(min_dc) = config.min_angle_duty_cycle {
+        context.config.channels[channel as usize].min_angle_duty_cycle = min_dc;
+    }
+    if let Some(max_dc) = config.max_angle_duty_cycle {
+        context.config.channels[channel as usize].max_angle_duty_cycle = max_dc;
+    }
+    if let Some(enabled) = config.enabled {
+        context.config.channels[channel as usize].enabled = enabled;
+        if enabled {
+            ch.enable();
+        } else {
+            ch.disable();
+        }
+    }
 }
 
 fn get_servo_config_handler(context: &mut Context, _header: VarHeader, _rqst: ()) -> ServoConfig {

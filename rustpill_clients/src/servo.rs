@@ -3,7 +3,7 @@ use postcard_rpc::{
     host_client::{HostClient, HostErr},
     standard_icd::{ERROR_PATH, LoggingTopic, WireError},
 };
-use protocol::{GetUniqueIdEndpoint, PingX2Endpoint};
+use protocol::{GetUniqueIdEndpoint, PingX2Endpoint, PwmChannel};
 use pyo3::prelude::*;
 use pyo3_stub_gen::derive::*;
 use std::convert::Infallible;
@@ -24,6 +24,7 @@ pub struct ServoClient {
 pub enum ServoError<E> {
     Comms(HostErr<WireError>),
     Endpoint(E),
+    InvalidData(String),
 }
 
 impl<E> From<HostErr<WireError>> for ServoError<E> {
@@ -41,6 +42,7 @@ impl<E> Into<PyErr> for ServoError<E> {
             ServoError::Endpoint(_) => {
                 PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Endpoint error")
             }
+            ServoError::InvalidData(msg) => PyErr::new::<pyo3::exceptions::PyValueError, _>(msg),
         }
     }
 }
@@ -127,47 +129,108 @@ impl ServoClient {
 
     /// Set the angle of the servo.
     ///
+    /// :param channel: The channel to set the servo on (1-4), corresponding to PWM channels on pins PB6-PB9.
     /// :param angle: The angle to set the servo to (0-180).
-    pub fn set_angle(&self, angle: u8) -> Result<(), ServoError<Infallible>> {
+    pub fn set_angle(&self, channel: u8, angle: u8) -> Result<(), ServoError<Infallible>> {
+        let channel = PwmChannel::try_from(channel)
+            .map_err(|_| ServoError::InvalidData("Invalid channel".to_string()))?;
+        if angle > 180 {
+            return Err(ServoError::InvalidData("Invalid angle".to_string()));
+        }
+
         pyo3_async_runtimes::tokio::get_runtime().block_on(async move {
             self.client
-                .send_resp::<protocol::SetAngleEndpoint>(&angle)
+                .send_resp::<protocol::SetAngleEndpoint>(&(channel as PwmChannel, angle))
                 .await
         })?;
         Ok(())
     }
 
-    /// Get the angle of the servo.
+    /// Get the angle of the servo on channel 1-4.
     ///
     /// :return: The angle of the servo (0-180).
-    pub fn get_angle(&self) -> Result<u8, ServoError<Infallible>> {
+    pub fn get_angle(&self, channel: u8) -> Result<u8, ServoError<Infallible>> {
+        let channel = PwmChannel::try_from(channel)
+            .map_err(|_| ServoError::InvalidData("Invalid channel".to_string()))?;
+
         let angle = pyo3_async_runtimes::tokio::get_runtime().block_on(async move {
             self.client
-                .send_resp::<protocol::GetAngleEndpoint>(&())
+                .send_resp::<protocol::GetAngleEndpoint>(&channel)
                 .await
         })?;
         Ok(angle)
     }
 
-    /// Set the minimum duty cycle of the servo.
+    /// Configure the servo channel.
+    /// This function sets the minimum and maximum duty cycle for the servo channel,
+    /// which corresponds to the minimum and maximum angle. Leave arguments as None to use
+    /// to not change them on device.
     ///
-    /// :param min: The minimum duty cycle to set the servo to in microseconds.
-    pub fn set_servo_min(&self, min: u32) -> Result<(), ServoError<Infallible>> {
+    /// :param channel: The channel to configure (1-4).
+    /// :param enabled: Whether the channel is enabled or not. Board boots with all channels disabled.
+    /// :param current_duty_cycle: The current duty cycle of the channel. Set to 0 on boot.
+    /// :param min_angle_duty_cycle: The minimum duty cycle for the channel. By default uses values corresponding to a pulse width of 500us.
+    /// :param max_angle_duty_cycle: The maximum duty cycle for the channel. By default uses values corresponding to a pulse width of 2500us.
+    #[pyo3(signature = (
+        channel,
+        enabled = None,
+        current_duty_cycle = None,
+        min_angle_duty_cycle = None,
+        max_angle_duty_cycle = None,
+    ))]
+    pub fn configure_channel(
+        &self,
+        channel: u8,
+        enabled: Option<bool>,
+        current_duty_cycle: Option<u16>,
+        min_angle_duty_cycle: Option<u16>,
+        max_angle_duty_cycle: Option<u16>,
+    ) -> Result<(), ServoError<Infallible>> {
+        let channel = PwmChannel::try_from(channel)
+            .map_err(|_| ServoError::InvalidData("Invalid channel".to_string()))?;
+        let config = protocol::ServoChannelConfigRqst {
+            min_angle_duty_cycle,
+            max_angle_duty_cycle,
+            current_duty_cycle,
+            enabled,
+        };
+        if min_angle_duty_cycle > max_angle_duty_cycle {
+            return Err(ServoError::InvalidData(
+                "min_angle_duty_cycle > max_angle_duty_cycle".to_string(),
+            ));
+        }
+
         pyo3_async_runtimes::tokio::get_runtime().block_on(async move {
             self.client
-                .send_resp::<protocol::SetServoMinEndpoint>(&min)
+                .send_resp::<protocol::ConfigureChannel>(&((channel, config)))
                 .await
         })?;
         Ok(())
     }
 
-    /// Set the maximum duty cycle of the servo.
-    ///     
-    /// :param max: The maximum duty cycle to set the servo to in microseconds.
-    pub fn set_servo_max(&self, max: u32) -> Result<(), ServoError<Infallible>> {
+    /// Get the servo configuration.
+    /// This function returns the current configuration of the servo channels as a JSON string.
+    /// It needs to be formatted using `json.loads()` in Python.
+    /// :return: The servo configuration as a JSON string.
+    pub fn get_config(&self) -> Result<String, ServoError<Infallible>> {
+        let config = pyo3_async_runtimes::tokio::get_runtime().block_on(async move {
+            self.client.send_resp::<protocol::GetServoConfig>(&()).await
+        })?;
+
+        Ok(serde_json::to_string(&config)
+            .map_err(|e| ServoError::InvalidData(format!("Failed to serialize config: {}", e)))?)
+    }
+
+    /// Set the frequency of the PWM signal.
+    /// This function sets the frequency of the PWM signal for all channels.
+    /// The frequency is set in Hz, default on device is 50 Hz. Note that all
+    /// channels will be disabled when the frequency is changed, as the max duty cycle
+    /// changes and settings need to be readjusted.
+    /// :param frequency: The frequency to set in Hz.
+    pub fn set_frequency(&self, frequency: u32) -> Result<(), ServoError<Infallible>> {
         pyo3_async_runtimes::tokio::get_runtime().block_on(async move {
             self.client
-                .send_resp::<protocol::SetServoMaxEndpoint>(&max)
+                .send_resp::<protocol::SetFrequencyEndpoint>(&frequency)
                 .await
         })?;
         Ok(())
