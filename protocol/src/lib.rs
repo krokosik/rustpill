@@ -22,6 +22,7 @@ endpoints! {
     | GetAngleEndpoint          | PwmChannel                          | u8                    | "servo/get_angle" |
     | ConfigureChannel          | (PwmChannel, ServoChannelConfig)    | ()                    | "servo/channel"   |
     | GetServoConfig            | ()                                  | ServoConfig           | "servo/config"    |
+    | SetFrequencyEndpoint      | u32                                 | ()                    | "servo/frequency" |
 }
 
 topics! {

@@ -20,7 +20,7 @@ use postcard_rpc::{define_dispatch, sender_fmt};
 use protocol::{
     ConfigureChannel, GetAngleEndpoint, GetServoConfig, GetUniqueIdEndpoint, PingX2Endpoint,
     PwmChannel, SERVO_ENDPOINT_LIST, ServoChannelConfig, ServoConfig, SetAngleEndpoint,
-    TOPICS_IN_LIST, TOPICS_OUT_LIST,
+    SetFrequencyEndpoint, TOPICS_IN_LIST, TOPICS_OUT_LIST,
 };
 use static_cell::ConstStaticCell;
 use {defmt_rtt as _, panic_probe as _};
@@ -69,6 +69,7 @@ define_dispatch! {
         | GetAngleEndpoint          | blocking  | get_angle_handler             |
         | ConfigureChannel          | blocking  | configure_channel_handler     |
         | GetServoConfig            | blocking  | get_servo_config_handler      |
+        | SetFrequencyEndpoint      | blocking  | set_frequency_handler         |
     };
     topics_in: {
         list: TOPICS_IN_LIST;
@@ -279,6 +280,26 @@ fn get_channel<'d>(
         PwmChannel::Channel2 => pwm.ch2(),
         PwmChannel::Channel3 => pwm.ch3(),
         PwmChannel::Channel4 => pwm.ch4(),
+    }
+}
+
+fn set_frequency_handler(context: &mut Context, _header: VarHeader, rqst: u32) {
+    defmt::info!("set_frequency");
+
+    context.pwm.ch1().disable();
+    context.pwm.ch2().disable();
+    context.pwm.ch3().disable();
+    context.pwm.ch4().disable();
+
+    context.pwm.set_frequency(Hertz(rqst));
+    defmt::warn!(
+        "Frequency change, max duty cycle changed from {} to {}. Disabling all channels...",
+        context.config.max_duty_cycle,
+        context.pwm.max_duty_cycle()
+    );
+
+    for i in 0..4 {
+        context.config.channels[i].enabled = false;
     }
 }
 
