@@ -4,7 +4,7 @@
 use embassy_executor::Spawner;
 use embassy_stm32::gpio::{Level, Output, OutputType, Speed};
 use embassy_stm32::time::Hertz;
-use embassy_stm32::timer::simple_pwm::{PwmPin, SimplePwm};
+use embassy_stm32::timer::simple_pwm::{PwmPin, SimplePwm, SimplePwmChannel};
 use embassy_stm32::usb;
 use embassy_stm32::{Config, bind_interrupts, peripherals, timer};
 use embassy_sync::blocking_mutex::raw::ThreadModeRawMutex;
@@ -18,18 +18,18 @@ use postcard_rpc::server::impls::embassy_usb_v0_4::dispatch_impl::{
 use postcard_rpc::server::{Dispatch, Sender, Server};
 use postcard_rpc::{define_dispatch, sender_fmt};
 use protocol::{
-    GetAngleEndpoint, GetUniqueIdEndpoint, PingX2Endpoint, SERVO_ENDPOINT_LIST, SetAngleEndpoint,
-    SetServoMaxEndpoint, SetServoMinEndpoint, TOPICS_IN_LIST, TOPICS_OUT_LIST,
+    ConfigureChannel, GetAngleEndpoint, GetServoConfig, GetUniqueIdEndpoint, PingX2Endpoint,
+    PwmChannel, SERVO_ENDPOINT_LIST, ServoChannelConfig, ServoConfig, SetAngleEndpoint,
+    TOPICS_IN_LIST, TOPICS_OUT_LIST,
 };
 use static_cell::ConstStaticCell;
 use {defmt_rtt as _, panic_probe as _};
 
-use firmware::{enable_usb_clock, usb_config};
+use firmware::{enable_usb_clock, get_usb_config};
 
 pub struct Context {
     pwm: SimplePwm<'static, peripherals::TIM4>,
-    servo_min: u16,
-    servo_max: u16,
+    config: ServoConfig,
 }
 
 type AppDriver = usb::Driver<'static, peripherals::USB>;
@@ -67,8 +67,8 @@ define_dispatch! {
         | GetUniqueIdEndpoint       | blocking  | unique_id_handler             |
         | SetAngleEndpoint          | blocking  | set_angle_handler             |
         | GetAngleEndpoint          | blocking  | get_angle_handler             |
-        | SetServoMinEndpoint       | blocking  | set_servo_min_handler         |
-        | SetServoMaxEndpoint       | blocking  | set_servo_max_handler         |
+        | ConfigureChannel          | blocking  | configure_channel_handler     |
+        | GetServoConfig            | blocking  | get_servo_config_handler      |
     };
     topics_in: {
         list: TOPICS_IN_LIST;
@@ -90,12 +90,12 @@ async fn main(spawner: Spawner) {
     let pbufs = PBUFS.take();
 
     /********************************** PWM **********************************/
-    let mut pwm = SimplePwm::new(
+    let pwm = SimplePwm::new(
         p.TIM4,
-        None,
+        Some(PwmPin::new_ch1(p.PB6, OutputType::PushPull)),
         Some(PwmPin::new_ch2(p.PB7, OutputType::PushPull)),
-        None,
-        None,
+        Some(PwmPin::new_ch3(p.PB8, OutputType::PushPull)),
+        Some(PwmPin::new_ch4(p.PB9, OutputType::PushPull)),
         SERVO_FREQ,
         timer::low_level::CountingMode::CenterAlignedBothInterrupts,
     );
@@ -105,8 +105,6 @@ async fn main(spawner: Spawner) {
     let servo_max = max_duty_cycle * SERVO_FREQ.0 / 1_000 * SERVO_MAX_US / 1_000;
 
     defmt::info!("Servo min: {}, Servo max: {}", servo_min, servo_max);
-
-    pwm.ch2().enable();
 
     /********************************** USB **********************************/
     {
@@ -122,14 +120,22 @@ async fn main(spawner: Spawner) {
     let driver = usb::Driver::new(p.USB, Irqs, p.PA12, p.PA11);
 
     // Create embassy-usb Config
-    let config = usb_config("bluepill-servo");
+    let usb_config = get_usb_config("bluepill-servo");
+
+    let mut servo_config = ServoConfig::default();
+    servo_config.servo_frequency = SERVO_FREQ.0;
+    servo_config.max_duty_cycle = max_duty_cycle as u16;
+    for i in 0..4 {
+        servo_config.channels[i].min_angle_duty_cycle = servo_min as u16;
+        servo_config.channels[i].max_angle_duty_cycle = servo_max as u16;
+        servo_config.channels[i].enabled = false;
+    }
 
     let context = Context {
+        config: servo_config,
         pwm,
-        servo_min: servo_min as u16,
-        servo_max: servo_max as u16,
     };
-    let (device, tx_impl, rx_impl) = STORAGE.init(driver, config, pbufs.tx_buf.as_mut_slice());
+    let (device, tx_impl, rx_impl) = STORAGE.init(driver, usb_config, pbufs.tx_buf.as_mut_slice());
     let dispather = MyApp::new(context, spawner.into());
     let vkk = dispather.min_key_len();
     let server: AppServer = Server::new(
@@ -187,43 +193,46 @@ pub async fn logging_task(sender: Sender<AppTx>) {
     }
 }
 
-fn set_angle_handler(context: &mut Context, _header: VarHeader, rqst: u8) {
-    let mut duty_cycle = (context.servo_min as u32
-        + rqst as u32 * (context.servo_max - context.servo_min) as u32 / 180)
-        as u16;
+fn set_angle_handler(context: &mut Context, _header: VarHeader, rqst: (PwmChannel, u8)) {
+    let (channel, angle) = rqst;
+    defmt::info!("Set angle: channel: {}, angle: {}", channel, angle);
+
+    let channel_config = get_channel_config(&mut context.config, channel);
+    let servo_min = channel_config.min_angle_duty_cycle;
+    let servo_max = channel_config.max_angle_duty_cycle;
+    defmt::info!("Servo min: {}, Servo max: {}", servo_min, servo_max);
+
+    let mut duty_cycle =
+        (servo_min as u32 + angle as u32 * (servo_max - servo_min) as u32 / 180) as u16;
+
     defmt::info!("Set angle: {} -> duty cycle: {}", rqst, duty_cycle);
-    if duty_cycle < context.servo_min {
-        duty_cycle = context.servo_min;
-    } else if duty_cycle > context.servo_max {
-        duty_cycle = context.servo_max;
+
+    if duty_cycle < servo_min {
+        duty_cycle = servo_min;
+    } else if duty_cycle > servo_max {
+        duty_cycle = servo_max;
     }
 
-    context.pwm.ch2().set_duty_cycle(duty_cycle);
+    let mut ch = get_channel(&mut context.pwm, channel);
+    ch.set_duty_cycle(duty_cycle);
+    channel_config.current_duty_cycle = duty_cycle;
+
+    if !channel_config.enabled {
+        ch.enable();
+        channel_config.enabled = true;
+    }
 }
 
-fn get_angle_handler(context: &mut Context, _header: VarHeader, _rqst: ()) -> u8 {
-    let duty_cycle = context.pwm.ch2().current_duty_cycle();
+fn get_angle_handler(context: &mut Context, _header: VarHeader, rqst: PwmChannel) -> u8 {
+    let ch = get_channel(&mut context.pwm, rqst);
+    let channel_config = get_channel_config(&mut context.config, rqst);
+    let servo_min = channel_config.min_angle_duty_cycle;
+    let servo_max = channel_config.max_angle_duty_cycle;
+    let duty_cycle = ch.current_duty_cycle();
 
     defmt::info!("Get angle: duty cycle: {}", duty_cycle);
 
-    ((duty_cycle - context.servo_min) as u32 * 180 / (context.servo_max - context.servo_min) as u32)
-        as u8
-}
-
-fn set_servo_min_handler(context: &mut Context, _header: VarHeader, rqst: u32) {
-    let max_duty_cycle = context.pwm.max_duty_cycle() as u32;
-    defmt::info!("Max Duty Cycle: {}", max_duty_cycle);
-    let servo_min = max_duty_cycle * SERVO_FREQ.0 / 1_000 * rqst / 1_000;
-    defmt::info!("Set servo min duty cycle: {}", servo_min);
-    context.servo_min = servo_min as u16;
-}
-
-fn set_servo_max_handler(context: &mut Context, _header: VarHeader, rqst: u32) {
-    let max_duty_cycle = context.pwm.max_duty_cycle() as u32;
-    defmt::info!("Max Duty Cycle: {}", max_duty_cycle);
-    let servo_max = max_duty_cycle * SERVO_FREQ.0 / 1_000 * rqst / 1_000;
-    defmt::info!("Set servo max duty cycle: {}", servo_max);
-    context.servo_max = servo_max as u16;
+    ((duty_cycle - servo_min) as u32 * 180 / (servo_max - servo_min) as u32) as u8
 }
 
 fn pingx2_handler(_context: &mut Context, _header: VarHeader, rqst: u32) -> u32 {
@@ -234,4 +243,48 @@ fn pingx2_handler(_context: &mut Context, _header: VarHeader, rqst: u32) -> u32 
 fn unique_id_handler(_context: &mut Context, _header: VarHeader, _rqst: ()) -> [u8; 12] {
     defmt::info!("unique_id");
     *embassy_stm32::uid::uid()
+}
+
+fn configure_channel_handler(
+    context: &mut Context,
+    _header: VarHeader,
+    rqst: (PwmChannel, ServoChannelConfig),
+) {
+    defmt::info!("configure_channel");
+
+    let (channel, config) = rqst;
+    let mut ch = get_channel(&mut context.pwm, channel);
+    ch.set_duty_cycle(config.current_duty_cycle);
+
+    if config.enabled {
+        ch.enable();
+    } else {
+        ch.disable();
+    }
+
+    context.config.channels[channel as usize] = config;
+}
+
+fn get_servo_config_handler(context: &mut Context, _header: VarHeader, _rqst: ()) -> ServoConfig {
+    defmt::info!("get_servo_config");
+    context.config.clone()
+}
+
+fn get_channel<'d>(
+    pwm: &'d mut SimplePwm<peripherals::TIM4>,
+    channel: PwmChannel,
+) -> SimplePwmChannel<'d, peripherals::TIM4> {
+    match channel {
+        PwmChannel::Channel1 => pwm.ch1(),
+        PwmChannel::Channel2 => pwm.ch2(),
+        PwmChannel::Channel3 => pwm.ch3(),
+        PwmChannel::Channel4 => pwm.ch4(),
+    }
+}
+
+fn get_channel_config<'a>(
+    config: &'a mut ServoConfig,
+    channel: PwmChannel,
+) -> &'a mut ServoChannelConfig {
+    &mut config.channels[channel as usize]
 }

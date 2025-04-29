@@ -45,4 +45,5 @@ Here is a brief description of each crate:
 - more convenient async wrappers for blocking Python bindings, perhaps a macro
 - expand the firmware and port more Cube code
 - create async Python bindings as well and a test file with asyncio
+- figure out how to pass sender to handler, to support easy logging
 - fix the `firmare` runner, which is ignored when using `forced-target`, i.e. find a way to make the Cargo workspace work nicer. [cargo issue](https://github.com/rust-lang/cargo/issues/14833)

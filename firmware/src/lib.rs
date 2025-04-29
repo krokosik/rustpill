@@ -21,7 +21,7 @@ pub fn enable_usb_clock(config: &mut Config) {
     config.rcc.apb2_pre = APBPrescaler::DIV1;
 }
 
-pub fn usb_config(product_name: &'static str) -> embassy_usb::Config<'static> {
+pub fn get_usb_config(product_name: &'static str) -> embassy_usb::Config<'static> {
     let mut config = embassy_usb::Config::new(0xc0de, 0xcafe);
     config.manufacturer = Some("QOD Lab");
     config.product = Some(product_name);
