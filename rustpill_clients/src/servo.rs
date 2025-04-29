@@ -98,10 +98,14 @@ impl ServoClient {
         })
     }
 
-    pub fn wait_closed(&self) {
-        pyo3_async_runtimes::tokio::get_runtime().block_on(async move {
-            self.client.wait_closed().await;
-        });
+    /// Close the connection to the board.
+    pub fn close(&self) {
+        self.client.close();
+    }
+
+    /// Check if the connection to the board is closed.
+    pub fn is_connected(&self) -> bool {
+        !self.client.is_closed()
     }
 
     /// Send a ping to the board and return the response.

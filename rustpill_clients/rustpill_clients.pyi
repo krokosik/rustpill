@@ -11,7 +11,16 @@ class ServoClient:
     available device by product string.
     """
     def __new__(cls,port:typing.Optional[builtins.str]=None): ...
-    def wait_closed(self) -> None:
+    def close(self) -> None:
+        r"""
+        Close the connection to the board.
+        """
+        ...
+
+    def is_connected(self) -> builtins.bool:
+        r"""
+        Check if the connection to the board is closed.
+        """
         ...
 
     def pingx2(self, val:builtins.int) -> builtins.int:
