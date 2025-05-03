@@ -1,5 +1,6 @@
 use pyo3::prelude::*;
 
+mod common;
 mod servo;
 
 use pyo3_stub_gen::define_stub_info_gatherer;

@@ -1,15 +1,10 @@
-use postcard_rpc::{
-    header::VarSeqKind,
-    host_client::{HostClient, HostErr},
-    standard_icd::{ERROR_PATH, LoggingTopic, WireError},
-};
+use postcard_rpc::{host_client::HostClient, standard_icd::WireError};
 use protocol::{GetUniqueIdEndpoint, PingX2Endpoint, PwmChannel, ServoConfig};
 use pyo3::prelude::*;
 use pyo3_stub_gen::derive::*;
 use std::convert::Infallible;
 
-#[cfg(target_os = "linux")]
-use std::path::PathBuf;
+use crate::common::{BoardError, connect_to_board};
 
 const STM32_PWM_RESOLUTION_BITS: u8 = 16;
 
@@ -24,33 +19,6 @@ pub struct ServoClient {
     config: ServoConfig,
 }
 
-#[derive(Debug)]
-pub enum ServoError<E> {
-    Comms(HostErr<WireError>),
-    Endpoint(E),
-    InvalidData(String),
-}
-
-impl<E> From<HostErr<WireError>> for ServoError<E> {
-    fn from(value: HostErr<WireError>) -> Self {
-        Self::Comms(value)
-    }
-}
-
-impl<E> Into<PyErr> for ServoError<E> {
-    fn into(self) -> PyErr {
-        match self {
-            ServoError::Comms(err) => {
-                PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("{:?}", err))
-            }
-            ServoError::Endpoint(_) => {
-                PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Endpoint error")
-            }
-            ServoError::InvalidData(msg) => PyErr::new::<pyo3::exceptions::PyValueError, _>(msg),
-        }
-    }
-}
-
 #[gen_stub_pymethods]
 #[pymethods]
 impl ServoClient {
@@ -58,45 +26,7 @@ impl ServoClient {
     #[pyo3(signature = (port = None))]
     pub fn new(port: Option<&str>) -> Self {
         pyo3_async_runtimes::tokio::get_runtime().block_on(async move {
-            let client = HostClient::new_raw_nusb(
-                |d| {
-                    if port.is_some() {
-                        #[cfg(target_os = "windows")]
-                        {
-                            assert!(port.unwrap().starts_with("COM"));
-                            format!("COM{}", d.port_number()) == port.unwrap()
-                        }
-
-                        #[cfg(target_os = "linux")]
-                        {
-                            d.sysfs_path() == PathBuf::from(port.unwrap())
-                        }
-                    } else {
-                        d.product_string() == Some("bluepill-servo")
-                    }
-                },
-                ERROR_PATH,
-                8,
-                VarSeqKind::Seq2,
-            );
-
-            let mut logsub = client.subscribe_multi::<LoggingTopic>(64).await.unwrap();
-
-            // Spawn a background task to handle log messages
-            pyo3_async_runtimes::tokio::get_runtime().spawn(async move {
-                log::info!("Starting log subscription");
-                loop {
-                    match logsub.recv().await {
-                        Ok(log) => {
-                            log::info!("FIRMWARE: {}", log);
-                        }
-                        Err(e) => {
-                            log::error!("Log subscription error: {:?}", e);
-                            break;
-                        }
-                    }
-                }
-            });
+            let client = connect_to_board(port).await.unwrap();
 
             let config = client
                 .send_resp::<protocol::GetServoConfig>(&())
@@ -124,7 +54,7 @@ impl ServoClient {
     ///
     /// :param val: The number to send to the device.
     /// :return: The number returned by the device: val * 2.
-    pub fn pingx2(&self, val: u32) -> Result<u32, ServoError<Infallible>> {
+    pub fn pingx2(&self, val: u32) -> Result<u32, BoardError<Infallible>> {
         let dbl_val = pyo3_async_runtimes::tokio::get_runtime()
             .block_on(async move { self.client.send_resp::<PingX2Endpoint>(&val).await })?;
         Ok(dbl_val)
@@ -134,7 +64,7 @@ impl ServoClient {
     /// The ID is a 92-bit number, which is padded to 128 bits with zeros.
     ///
     /// :return: The unique ID of the board.
-    pub fn get_id(&self) -> Result<u128, ServoError<Infallible>> {
+    pub fn get_id(&self) -> Result<u128, BoardError<Infallible>> {
         let id = pyo3_async_runtimes::tokio::get_runtime()
             .block_on(async move { self.client.send_resp::<GetUniqueIdEndpoint>(&()).await })?;
         let mut padded_id = [0u8; 16];
@@ -146,12 +76,12 @@ impl ServoClient {
     ///
     /// :param channel: The channel to set the servo on (1-4), corresponding to PWM channels on pins PB6-PB9.
     /// :param angle: The angle to set the servo to (0-180).
-    pub fn set_angle(&mut self, channel: u8, angle: u8) -> Result<(), ServoError<Infallible>> {
+    pub fn set_angle(&mut self, channel: u8, angle: u8) -> Result<(), BoardError<Infallible>> {
         if channel < 1 || channel > 4 {
-            return Err(ServoError::InvalidData("Invalid channel".to_string()));
+            return Err(BoardError::InvalidData("Invalid channel".to_string()));
         }
         if angle > 180 {
-            return Err(ServoError::InvalidData("Invalid angle".to_string()));
+            return Err(BoardError::InvalidData("Invalid angle".to_string()));
         }
 
         let channel_config = &self.config.channels[channel as usize];
@@ -173,9 +103,9 @@ impl ServoClient {
     /// Get the angle of the servo on channel 1-4.
     ///
     /// :return: The angle of the servo (0-180).
-    pub fn get_angle(&self, channel: u8) -> Result<u8, ServoError<Infallible>> {
+    pub fn get_angle(&self, channel: u8) -> Result<u8, BoardError<Infallible>> {
         let channel = PwmChannel::try_from(channel)
-            .map_err(|_| ServoError::InvalidData("Invalid channel".to_string()))?;
+            .map_err(|_| BoardError::InvalidData("Invalid channel".to_string()))?;
 
         let channel_config = &self.config.channels[channel as usize];
         let angle = self.duty_cycle_to_angle(
@@ -210,9 +140,9 @@ impl ServoClient {
         current_duty_cycle: Option<u16>,
         min_angle_duty_cycle: Option<u16>,
         max_angle_duty_cycle: Option<u16>,
-    ) -> Result<(), ServoError<Infallible>> {
+    ) -> Result<(), BoardError<Infallible>> {
         let channel = PwmChannel::try_from(channel)
-            .map_err(|_| ServoError::InvalidData("Invalid channel".to_string()))?;
+            .map_err(|_| BoardError::InvalidData("Invalid channel".to_string()))?;
         let channel_config = &mut self.config.channels[channel as usize];
 
         channel_config.enabled = enabled.unwrap_or(channel_config.enabled);
@@ -236,7 +166,7 @@ impl ServoClient {
     /// Get the servo configuration.
     /// This function returns the current configuration of the servo channels.
     /// :return: The ServoConfig object.
-    pub fn update_config(&mut self) -> Result<(), ServoError<Infallible>> {
+    pub fn update_config(&mut self) -> Result<(), BoardError<Infallible>> {
         pyo3_async_runtimes::tokio::get_runtime().block_on(async move {
             let config = self
                 .client
@@ -253,7 +183,7 @@ impl ServoClient {
     /// channels will be disabled when the frequency is changed, as the max duty cycle
     /// changes and settings need to be readjusted.
     /// :param frequency: The frequency to set in Hz.
-    pub fn set_frequency(&mut self, frequency: u32) -> Result<(), ServoError<Infallible>> {
+    pub fn set_frequency(&mut self, frequency: u32) -> Result<(), BoardError<Infallible>> {
         pyo3_async_runtimes::tokio::get_runtime().block_on(async move {
             self.client
                 .send_resp::<protocol::SetFrequencyEndpoint>(&frequency)
@@ -297,11 +227,5 @@ impl ServoClient {
         let resolution = 2.0f32.powi(STM32_PWM_RESOLUTION_BITS as i32);
         let duty_cycle = (us / period) * resolution;
         duty_cycle.round() as u16
-    }
-}
-
-impl Default for ServoClient {
-    fn default() -> Self {
-        Self::new(None)
     }
 }
