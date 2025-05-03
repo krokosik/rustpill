@@ -4,7 +4,10 @@ use postcard_rpc::{TopicDirection, endpoints, topics};
 use postcard_schema::Schema;
 use serde::{Deserialize, Serialize};
 
-// ---
+#[cfg(feature = "use-std")]
+use pyo3::prelude::*;
+#[cfg(feature = "use-std")]
+use pyo3_stub_gen::derive::*;
 
 endpoints! {
     list = SERVO_ENDPOINT_LIST;
@@ -56,6 +59,7 @@ impl TryFrom<u8> for PwmChannel {
     }
 }
 
+#[cfg_attr(feature = "use-std", gen_stub_pyclass, pyclass(get_all, set_all))]
 #[derive(Serialize, Deserialize, Schema, Debug, Default, PartialEq, Clone)]
 pub struct ServoChannelConfig {
     pub min_angle_duty_cycle: u16,
@@ -72,6 +76,7 @@ pub struct ServoChannelConfigRqst {
     pub enabled: Option<bool>,
 }
 
+#[cfg_attr(feature = "use-std", gen_stub_pyclass, pyclass(get_all, set_all))]
 #[derive(Serialize, Deserialize, Schema, Debug, Default, PartialEq, Clone)]
 pub struct ServoConfig {
     pub servo_frequency: u32,

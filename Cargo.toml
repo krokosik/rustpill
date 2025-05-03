@@ -39,7 +39,6 @@ pyo3-stub-gen-derive = "0.7.0"
 serde = { version = "1.0", default-features = false }
 tokio = "1.44.2"
 dotenvy = "0.15.7"
-serde_json = "1.0.140"
 
 [workspace]
 resolver = "2"

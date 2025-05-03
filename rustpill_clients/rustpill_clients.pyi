@@ -4,6 +4,12 @@
 import builtins
 import typing
 
+class ServoChannelConfig:
+    min_angle_duty_cycle: builtins.int
+    max_angle_duty_cycle: builtins.int
+    current_duty_cycle: builtins.int
+    enabled: builtins.bool
+
 class ServoClient:
     r"""
     This class communicates with Bluepill Servo Rust firmware. You can pass a port string to the
@@ -74,7 +80,7 @@ class ServoClient:
         """
         ...
 
-    def get_config(self) -> builtins.str:
+    def get_config(self) -> ServoConfig:
         r"""
         Get the servo configuration.
         This function returns the current configuration of the servo channels as a JSON string.
@@ -94,4 +100,9 @@ class ServoClient:
         """
         ...
 
+
+class ServoConfig:
+    servo_frequency: builtins.int
+    max_duty_cycle: builtins.int
+    channels: builtins.list[ServoChannelConfig]
 

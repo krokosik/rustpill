@@ -33,4 +33,3 @@ pyo3-stub-gen = { workspace = true }
 pyo3-stub-gen-derive = { workspace = true }
 tokio = { workspace = true, features = ["macros", "time", "rt-multi-thread"] }
 serde = { workspace = true }
-serde_json = { workspace = true }

@@ -3,7 +3,7 @@ use postcard_rpc::{
     host_client::{HostClient, HostErr},
     standard_icd::{ERROR_PATH, LoggingTopic, WireError},
 };
-use protocol::{GetUniqueIdEndpoint, PingX2Endpoint, PwmChannel};
+use protocol::{GetUniqueIdEndpoint, PingX2Endpoint, PwmChannel, ServoConfig};
 use pyo3::prelude::*;
 use pyo3_stub_gen::derive::*;
 use std::convert::Infallible;
@@ -213,16 +213,15 @@ impl ServoClient {
     }
 
     /// Get the servo configuration.
-    /// This function returns the current configuration of the servo channels as a JSON string.
-    /// It needs to be formatted using `json.loads()` in Python.
-    /// :return: The servo configuration as a JSON string.
-    pub fn get_config(&self) -> Result<String, ServoError<Infallible>> {
+    /// This function returns the current configuration of the servo channels.
+    /// :return: The ServoConfig object.
+    pub fn get_config(&self) -> Result<ServoConfig, ServoError<Infallible>> {
+        // This Rust Analyzer error can be ignored
         let config = pyo3_async_runtimes::tokio::get_runtime().block_on(async move {
             self.client.send_resp::<protocol::GetServoConfig>(&()).await
         })?;
 
-        Ok(serde_json::to_string(&config)
-            .map_err(|e| ServoError::InvalidData(format!("Failed to serialize config: {}", e)))?)
+        Ok(config)
     }
 
     /// Set the frequency of the PWM signal.
