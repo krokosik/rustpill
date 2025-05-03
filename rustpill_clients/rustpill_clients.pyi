@@ -83,9 +83,8 @@ class ServoClient:
     def get_config(self) -> ServoConfig:
         r"""
         Get the servo configuration.
-        This function returns the current configuration of the servo channels as a JSON string.
-        It needs to be formatted using `json.loads()` in Python.
-        :return: The servo configuration as a JSON string.
+        This function returns the current configuration of the servo channels.
+        :return: The ServoConfig object.
         """
         ...
 
@@ -97,6 +96,18 @@ class ServoClient:
         channels will be disabled when the frequency is changed, as the max duty cycle
         changes and settings need to be readjusted.
         :param frequency: The frequency to set in Hz.
+        """
+        ...
+
+    def angle_to_duty_cycle(self, angle:builtins.int, min_duty_cycle:builtins.int, max_duty_cycle:builtins.int) -> builtins.int:
+        ...
+
+    def duty_cycle_to_angle(self, duty_cycle:builtins.int, min_duty_cycle:builtins.int, max_duty_cycle:builtins.int) -> builtins.int:
+        ...
+
+    def us_to_duty_cycle(self, us:builtins.int) -> builtins.int:
+        r"""
+        Convert microseconds to duty cycle.
         """
         ...
 

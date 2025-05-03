@@ -16,8 +16,6 @@ endpoints! {
     | ----------                | ---------                            | ----------            | ----              |
     | PingX2Endpoint            | u32                                  | u32                   | "pingx2"          |
     | GetUniqueIdEndpoint       | ()                                   | [u8; 12]              | "unique_id/get"   |
-    | SetAngleEndpoint          | (PwmChannel, u8)                     | ()                    | "servo/set_angle" |
-    | GetAngleEndpoint          | PwmChannel                           | u8                    | "servo/get_angle" |
     | ConfigureChannel          | (PwmChannel, ServoChannelConfigRqst) | ()                    | "servo/channel"   |
     | GetServoConfig            | ()                                   | ServoConfig           | "servo/config"    |
     | SetFrequencyEndpoint      | u32                                  | ()                    | "servo/frequency" |

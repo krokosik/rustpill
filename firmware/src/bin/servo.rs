@@ -18,9 +18,9 @@ use postcard_rpc::server::impls::embassy_usb_v0_4::dispatch_impl::{
 use postcard_rpc::server::{Dispatch, Sender, Server};
 use postcard_rpc::{define_dispatch, sender_fmt};
 use protocol::{
-    ConfigureChannel, GetAngleEndpoint, GetServoConfig, GetUniqueIdEndpoint, PingX2Endpoint,
-    PwmChannel, SERVO_ENDPOINT_LIST, ServoChannelConfig, ServoChannelConfigRqst, ServoConfig,
-    SetAngleEndpoint, SetFrequencyEndpoint, TOPICS_IN_LIST, TOPICS_OUT_LIST,
+    ConfigureChannel, GetServoConfig, GetUniqueIdEndpoint, PingX2Endpoint, PwmChannel,
+    SERVO_ENDPOINT_LIST, ServoChannelConfigRqst, ServoConfig, SetFrequencyEndpoint, TOPICS_IN_LIST,
+    TOPICS_OUT_LIST,
 };
 use static_cell::ConstStaticCell;
 use {defmt_rtt as _, panic_probe as _};
@@ -65,8 +65,6 @@ define_dispatch! {
         | ----------                | ----      | -------                       |
         | PingX2Endpoint            | blocking  | pingx2_handler                |
         | GetUniqueIdEndpoint       | blocking  | unique_id_handler             |
-        | SetAngleEndpoint          | blocking  | set_angle_handler             |
-        | GetAngleEndpoint          | blocking  | get_angle_handler             |
         | ConfigureChannel          | blocking  | configure_channel_handler     |
         | GetServoConfig            | blocking  | get_servo_config_handler      |
         | SetFrequencyEndpoint      | blocking  | set_frequency_handler         |
@@ -194,48 +192,6 @@ pub async fn logging_task(sender: Sender<AppTx>) {
     }
 }
 
-fn set_angle_handler(context: &mut Context, _header: VarHeader, rqst: (PwmChannel, u8)) {
-    let (channel, angle) = rqst;
-    defmt::info!("Set angle: channel: {}, angle: {}", channel, angle);
-
-    let channel_config = get_channel_config(&mut context.config, channel);
-    let servo_min = channel_config.min_angle_duty_cycle;
-    let servo_max = channel_config.max_angle_duty_cycle;
-    defmt::info!("Servo min: {}, Servo max: {}", servo_min, servo_max);
-
-    let mut duty_cycle =
-        (servo_min as u32 + angle as u32 * (servo_max - servo_min) as u32 / 180) as u16;
-
-    defmt::info!("Set angle: {} -> duty cycle: {}", rqst, duty_cycle);
-
-    if duty_cycle < servo_min {
-        duty_cycle = servo_min;
-    } else if duty_cycle > servo_max {
-        duty_cycle = servo_max;
-    }
-
-    let mut ch = get_channel(&mut context.pwm, channel);
-    ch.set_duty_cycle(duty_cycle);
-    channel_config.current_duty_cycle = duty_cycle;
-
-    if !channel_config.enabled {
-        ch.enable();
-        channel_config.enabled = true;
-    }
-}
-
-fn get_angle_handler(context: &mut Context, _header: VarHeader, rqst: PwmChannel) -> u8 {
-    let ch = get_channel(&mut context.pwm, rqst);
-    let channel_config = get_channel_config(&mut context.config, rqst);
-    let servo_min = channel_config.min_angle_duty_cycle;
-    let servo_max = channel_config.max_angle_duty_cycle;
-    let duty_cycle = ch.current_duty_cycle();
-
-    defmt::info!("Get angle: duty cycle: {}", duty_cycle);
-
-    ((duty_cycle - servo_min) as u32 * 180 / (servo_max - servo_min) as u32) as u8
-}
-
 fn pingx2_handler(_context: &mut Context, _header: VarHeader, rqst: u32) -> u32 {
     defmt::info!("pingx2");
     rqst * 2
@@ -312,11 +268,4 @@ fn set_frequency_handler(context: &mut Context, _header: VarHeader, rqst: u32) {
     for i in 0..4 {
         context.config.channels[i].enabled = false;
     }
-}
-
-fn get_channel_config<'a>(
-    config: &'a mut ServoConfig,
-    channel: PwmChannel,
-) -> &'a mut ServoChannelConfig {
-    &mut config.channels[channel as usize]
 }

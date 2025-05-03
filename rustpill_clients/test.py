@@ -9,17 +9,20 @@ logging.getLogger().setLevel(logging.INFO)
 servo = ServoClient()
 # %%
 if True:  # big servo
-    servo.set_servo_min(722)
-    servo.set_servo_max(2306)
+    servo.configure_channel(
+        2,
+        min_angle_duty_cycle=servo.us_to_duty_cycle(722),
+        max_angle_duty_cycle=servo.us_to_duty_cycle(2306),
+    )
 # %%
-servo.set_angle(00)
+servo.set_angle(2, 0)
 # %%
 servo.pingx2(2137)
 # %%
 servo.get_id()
 # %%
-servo.get_angle()
+servo.get_angle(2)
 # %%
-servo.set_angle(180)
+servo.set_angle(2, 180)
 # %%
 servo.get_config()
