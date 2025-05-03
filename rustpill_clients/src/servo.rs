@@ -65,7 +65,7 @@ impl ServoClient {
 
                         #[cfg(target_os = "linux")]
                         {
-                            d.path().0 == PathBuf::from(port.unwrap())
+                            d.sysfs_path() == PathBuf::from(port.unwrap())
                         }
                     } else {
                         d.product_string() == Some("bluepill-servo")
