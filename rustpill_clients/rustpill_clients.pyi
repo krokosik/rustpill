@@ -16,6 +16,7 @@ class ServoClient:
     constructor to connect to a specific port. If no port is passed, it will try to connect to the first
     available device by product string.
     """
+    config: ServoConfig
     def __new__(cls,port:typing.Optional[builtins.str]=None): ...
     def close(self) -> None:
         r"""
@@ -80,7 +81,7 @@ class ServoClient:
         """
         ...
 
-    def get_config(self) -> ServoConfig:
+    def update_config(self) -> None:
         r"""
         Get the servo configuration.
         This function returns the current configuration of the servo channels.

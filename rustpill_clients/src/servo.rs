@@ -20,6 +20,7 @@ const STM32_PWM_RESOLUTION_BITS: u8 = 16;
 #[pyclass]
 pub struct ServoClient {
     client: HostClient<WireError>,
+    #[pyo3(get)]
     config: ServoConfig,
 }
 
@@ -235,13 +236,15 @@ impl ServoClient {
     /// Get the servo configuration.
     /// This function returns the current configuration of the servo channels.
     /// :return: The ServoConfig object.
-    pub fn get_config(&self) -> Result<ServoConfig, ServoError<Infallible>> {
-        // This Rust Analyzer error can be ignored
-        let config = pyo3_async_runtimes::tokio::get_runtime().block_on(async move {
-            self.client.send_resp::<protocol::GetServoConfig>(&()).await
-        })?;
-
-        Ok(config)
+    pub fn update_config(&mut self) -> Result<(), ServoError<Infallible>> {
+        pyo3_async_runtimes::tokio::get_runtime().block_on(async move {
+            let config = self
+                .client
+                .send_resp::<protocol::GetServoConfig>(&())
+                .await?;
+            self.config = config;
+            Ok(())
+        })
     }
 
     /// Set the frequency of the PWM signal.
@@ -251,14 +254,12 @@ impl ServoClient {
     /// changes and settings need to be readjusted.
     /// :param frequency: The frequency to set in Hz.
     pub fn set_frequency(&mut self, frequency: u32) -> Result<(), ServoError<Infallible>> {
-        self.config.servo_frequency = frequency;
-
         pyo3_async_runtimes::tokio::get_runtime().block_on(async move {
             self.client
                 .send_resp::<protocol::SetFrequencyEndpoint>(&frequency)
-                .await
-        })?;
-        Ok(())
+                .await?;
+            self.update_config()
+        })
     }
 
     pub fn angle_to_duty_cycle(&self, angle: u8, min_duty_cycle: u16, max_duty_cycle: u16) -> u16 {

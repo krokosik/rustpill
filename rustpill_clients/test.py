@@ -25,4 +25,4 @@ servo.get_angle(2)
 # %%
 servo.set_angle(2, 180)
 # %%
-servo.get_config()
+servo.config
