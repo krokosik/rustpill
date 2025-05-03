@@ -16,7 +16,7 @@ endpoints! {
     | ----------                | ---------                            | ----------            | ----              |
     | PingX2Endpoint            | u32                                  | u32                   | "pingx2"          |
     | GetUniqueIdEndpoint       | ()                                   | [u8; 12]              | "unique_id/get"   |
-    | ConfigureChannel          | (PwmChannel, ServoChannelConfigRqst) | ()                    | "servo/channel"   |
+    | ConfigureChannel          | (PwmChannel, ServoChannelConfig)     | ()                    | "servo/channel"   |
     | GetServoConfig            | ()                                   | ServoConfig           | "servo/config"    |
     | SetFrequencyEndpoint      | u32                                  | ()                    | "servo/frequency" |
 }
@@ -64,14 +64,6 @@ pub struct ServoChannelConfig {
     pub max_angle_duty_cycle: u16,
     pub current_duty_cycle: u16,
     pub enabled: bool,
-}
-
-#[derive(Serialize, Deserialize, Schema, Debug, Default, PartialEq, Clone)]
-pub struct ServoChannelConfigRqst {
-    pub min_angle_duty_cycle: Option<u16>,
-    pub max_angle_duty_cycle: Option<u16>,
-    pub current_duty_cycle: Option<u16>,
-    pub enabled: Option<bool>,
 }
 
 #[cfg_attr(feature = "use-std", gen_stub_pyclass, pyclass(get_all, set_all))]

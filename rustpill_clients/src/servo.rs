@@ -222,12 +222,7 @@ impl ServoClient {
         channel_config.max_angle_duty_cycle =
             max_angle_duty_cycle.unwrap_or(channel_config.max_angle_duty_cycle);
 
-        let channel_config = protocol::ServoChannelConfigRqst {
-            min_angle_duty_cycle: Some(channel_config.min_angle_duty_cycle),
-            max_angle_duty_cycle: Some(channel_config.max_angle_duty_cycle),
-            current_duty_cycle: Some(channel_config.current_duty_cycle),
-            enabled: Some(channel_config.enabled),
-        };
+        let channel_config = channel_config.clone();
 
         pyo3_async_runtimes::tokio::get_runtime().block_on(async move {
             self.client
