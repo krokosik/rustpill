@@ -27,7 +27,8 @@ postcard-rpc = "0.11.9"
 postcard-schema = "0.2.1"
 static_cell = "2.0.0"
 
-protocol = { version = "0.1.0", path = "protocol" }
+protocol = { path = "protocol" }
+macros = { path = "macros" }
 
 env_logger = "0.11.8"
 log = "0.4.27"
@@ -40,9 +41,13 @@ serde = { version = "1.0", default-features = false }
 tokio = "1.44.2"
 dotenvy = "0.15.7"
 
+syn = { version = "2.0", features = ["full"] }
+quote = "1.0"
+proc-macro2 = "1.0"
+
 [workspace]
 resolver = "2"
-members = ["firmware", "rustpill_clients", "protocol", "xtask"]
+members = ["firmware", "rustpill_clients", "protocol", "xtask", "macros"]
 
 [profile.dev.package.firmware]
 opt-level = "s"

@@ -18,7 +18,10 @@ env_logger = { workspace = true }
 log = { workspace = true }
 postcard-rpc = { workspace = true, features = ["use-std", "raw-nusb"] }
 postcard-schema = { workspace = true, features = ["derive"] }
+
 protocol = { workspace = true, features = ["use-std"] }
+macros = { workspace = true }
+
 pyo3 = { workspace = true, features = [
     "extension-module",
     "experimental-async",

@@ -1173,6 +1173,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "macros"
+version = "0.1.1"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.100",
+]
+
+[[package]]
 name = "maitake-sync"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1768,6 +1777,7 @@ version = "0.1.1"
 dependencies = [
  "env_logger",
  "log",
+ "macros",
  "postcard-rpc",
  "postcard-schema",
  "protocol",
