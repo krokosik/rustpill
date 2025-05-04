@@ -24,18 +24,15 @@ pub struct ServoClient {
 impl ServoClient {
     #[new]
     #[pyo3(signature = (port = None))]
-    pub fn new(port: Option<&str>) -> Self {
+    pub fn new(port: Option<&str>) -> Result<Self, BoardError<Infallible>> {
         pyo3_async_runtimes::tokio::get_runtime().block_on(async move {
-            let client = connect_to_board(port).await.unwrap();
+            let client = connect_to_board(port).await?;
 
-            let config = client
-                .send_resp::<protocol::GetServoConfig>(&())
-                .await
-                .unwrap();
+            let config = client.send_resp::<protocol::GetServoConfig>(&()).await?;
             log::info!("Servo config: {:?}", config);
             log::info!("Servo client connected to board");
 
-            Self { client, config }
+            Ok(Self { client, config })
         })
     }
 
