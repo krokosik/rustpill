@@ -52,9 +52,10 @@ impl ServoClient {
     /// :param val: The number to send to the device.
     /// :return: The number returned by the device: val * 2.
     pub fn pingx2(&self, val: u32) -> Result<u32, BoardError<Infallible>> {
-        let dbl_val = pyo3_async_runtimes::tokio::get_runtime()
-            .block_on(async move { self.client.send_resp::<PingX2Endpoint>(&val).await })?;
-        Ok(dbl_val)
+        pyo3_async_runtimes::tokio::get_runtime().block_on(async move {
+            let dbl_val = self.client.send_resp::<PingX2Endpoint>(&val).await?;
+            Ok(dbl_val)
+        })
     }
 
     /// Get the unique ID of the board.
@@ -62,11 +63,12 @@ impl ServoClient {
     ///
     /// :return: The unique ID of the board.
     pub fn get_id(&self) -> Result<u128, BoardError<Infallible>> {
-        let id = pyo3_async_runtimes::tokio::get_runtime()
-            .block_on(async move { self.client.send_resp::<GetUniqueIdEndpoint>(&()).await })?;
-        let mut padded_id = [0u8; 16];
-        padded_id[..12].copy_from_slice(&id);
-        Ok(u128::from_le_bytes(padded_id))
+        pyo3_async_runtimes::tokio::get_runtime().block_on(async move {
+            let id = self.client.send_resp::<GetUniqueIdEndpoint>(&()).await?;
+            let mut padded_id = [0u8; 16];
+            padded_id[..12].copy_from_slice(&id);
+            Ok(u128::from_le_bytes(padded_id))
+        })
     }
 
     /// Set the angle of the servo.
@@ -138,26 +140,26 @@ impl ServoClient {
         min_angle_duty_cycle: Option<u16>,
         max_angle_duty_cycle: Option<u16>,
     ) -> Result<(), BoardError<Infallible>> {
-        let channel = PwmChannel::try_from(channel)
-            .map_err(|_| BoardError::InvalidData("Invalid channel".to_string()))?;
-        let channel_config = &mut self.config.channels[channel as usize];
-
-        channel_config.enabled = enabled.unwrap_or(channel_config.enabled);
-        channel_config.current_duty_cycle =
-            current_duty_cycle.unwrap_or(channel_config.current_duty_cycle);
-        channel_config.min_angle_duty_cycle =
-            min_angle_duty_cycle.unwrap_or(channel_config.min_angle_duty_cycle);
-        channel_config.max_angle_duty_cycle =
-            max_angle_duty_cycle.unwrap_or(channel_config.max_angle_duty_cycle);
-
-        let channel_config = channel_config.clone();
-
         pyo3_async_runtimes::tokio::get_runtime().block_on(async move {
+            let channel = PwmChannel::try_from(channel)
+                .map_err(|_| BoardError::InvalidData("Invalid channel".to_string()))?;
+            let channel_config = &mut self.config.channels[channel as usize];
+
+            channel_config.enabled = enabled.unwrap_or(channel_config.enabled);
+            channel_config.current_duty_cycle =
+                current_duty_cycle.unwrap_or(channel_config.current_duty_cycle);
+            channel_config.min_angle_duty_cycle =
+                min_angle_duty_cycle.unwrap_or(channel_config.min_angle_duty_cycle);
+            channel_config.max_angle_duty_cycle =
+                max_angle_duty_cycle.unwrap_or(channel_config.max_angle_duty_cycle);
+
+            let channel_config = channel_config.clone();
+
             self.client
                 .send_resp::<protocol::ConfigureChannel>(&((channel, channel_config)))
-                .await
-        })?;
-        Ok(())
+                .await?;
+            Ok(())
+        })
     }
 
     /// Get the servo configuration.
