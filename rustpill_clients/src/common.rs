@@ -1,8 +1,8 @@
-use std::convert::Infallible;
+use std::{convert::Infallible, fmt::Debug};
 
 use postcard_rpc::{
     header::VarSeqKind,
-    host_client::{HostClient, HostErr},
+    host_client::{HostClient, HostErr, SchemaError},
     standard_icd::{ERROR_PATH, LoggingTopic, WireError},
 };
 use pyo3::prelude::*;
@@ -38,6 +38,11 @@ pub async fn connect_to_board(
         VarSeqKind::Seq2,
     );
 
+    log::info!(
+        "Connected to board. Protocol schemas:\n{:?}",
+        client.get_schema_report().await?
+    );
+
     let mut logsub = client.subscribe_multi::<LoggingTopic>(64).await.unwrap();
 
     // Spawn a background task to handle log messages
@@ -56,32 +61,46 @@ pub async fn connect_to_board(
         }
     });
 
+    log::info!("Initialized board client");
+
     Ok(client)
 }
 
 #[derive(Debug)]
-pub enum BoardError<E> {
+pub enum BoardError<E: Debug> {
     Comms(HostErr<WireError>),
+    Protocol(SchemaError<WireError>),
     Endpoint(E),
     InvalidData(String),
 }
 
-impl<E> From<HostErr<WireError>> for BoardError<E> {
+impl<E: Debug> From<HostErr<WireError>> for BoardError<E> {
     fn from(value: HostErr<WireError>) -> Self {
         Self::Comms(value)
     }
 }
 
-impl<E> Into<PyErr> for BoardError<E> {
+impl<E: Debug> From<SchemaError<WireError>> for BoardError<E> {
+    fn from(value: SchemaError<WireError>) -> Self {
+        Self::Protocol(value)
+    }
+}
+
+impl<E: Debug> Into<PyErr> for BoardError<E> {
     fn into(self) -> PyErr {
         match self {
             BoardError::Comms(err) => {
-                PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("{:?}", err))
+                PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("Comms error: {:?}", err))
             }
-            BoardError::Endpoint(_) => {
-                PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Endpoint error")
+            BoardError::Protocol(err) => PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(
+                format!("Protocol error: {:?}", err),
+            ),
+            BoardError::Endpoint(err) => PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(
+                format!("Endpoint error: {:?}", err),
+            ),
+            BoardError::InvalidData(msg) => {
+                PyErr::new::<pyo3::exceptions::PyValueError, _>(format!("Invalid data: {}", msg))
             }
-            BoardError::InvalidData(msg) => PyErr::new::<pyo3::exceptions::PyValueError, _>(msg),
         }
     }
 }
