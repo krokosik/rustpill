@@ -31,6 +31,7 @@ Here is a brief description of each crate:
 - **firmware** MCU codes with different functionalities. Each binary is one firmware and you select which one you want to flash by adding `--bin <name>` to the flash command.
 - **rustpill_clients** the host crate where Rust clients are defined and then Python bindings are generated on top of them.
 - **xtasks** Rust written build scripts, kind of like `make` [more info](https://github.com/matklad/cargo-xtask)
+- **macros** For convenience, custom Rust macros (codegen tools) are stored in a separate crate.
 
 ## How to start
 
