@@ -1,3 +1,4 @@
+use macros::blocking_async;
 use postcard_rpc::{host_client::HostClient, standard_icd::WireError};
 use protocol::{GetUniqueIdEndpoint, PingX2Endpoint, PwmChannel, ServoConfig};
 use pyo3::prelude::*;
@@ -19,30 +20,29 @@ pub struct ServoClient {
     config: ServoConfig,
 }
 
+#[blocking_async]
 #[gen_stub_pymethods]
 #[pymethods]
 impl ServoClient {
     #[new]
     #[pyo3(signature = (port = None))]
-    pub fn new(port: Option<&str>) -> Result<Self, BoardError<Infallible>> {
-        pyo3_async_runtimes::tokio::get_runtime().block_on(async move {
-            let client = connect_to_board(port).await?;
+    async fn new(port: Option<&str>) -> Result<Self, BoardError<Infallible>> {
+        let client = connect_to_board(port).await?;
 
-            let config = client.send_resp::<protocol::GetServoConfig>(&()).await?;
-            log::info!("Servo config: {:?}", config);
-            log::info!("Servo client connected to board");
+        let config = client.send_resp::<protocol::GetServoConfig>(&()).await?;
+        log::info!("Servo config: {:?}", config);
+        log::info!("Servo client connected to board");
 
-            Ok(Self { client, config })
-        })
+        Ok(Self { client, config })
     }
 
     /// Close the connection to the board.
-    pub fn close(&self) {
+    fn close(&self) {
         self.client.close();
     }
 
     /// Check if the connection to the board is closed.
-    pub fn is_connected(&self) -> bool {
+    fn is_connected(&self) -> bool {
         !self.client.is_closed()
     }
 
@@ -51,31 +51,27 @@ impl ServoClient {
     ///
     /// :param val: The number to send to the device.
     /// :return: The number returned by the device: val * 2.
-    pub fn pingx2(&self, val: u32) -> Result<u32, BoardError<Infallible>> {
-        pyo3_async_runtimes::tokio::get_runtime().block_on(async move {
-            let dbl_val = self.client.send_resp::<PingX2Endpoint>(&val).await?;
-            Ok(dbl_val)
-        })
+    async fn pingx2(&self, val: u32) -> Result<u32, BoardError<Infallible>> {
+        let dbl_val = self.client.send_resp::<PingX2Endpoint>(&val).await?;
+        Ok(dbl_val)
     }
 
     /// Get the unique ID of the board.
     /// The ID is a 92-bit number, which is padded to 128 bits with zeros.
     ///
     /// :return: The unique ID of the board.
-    pub fn get_id(&self) -> Result<u128, BoardError<Infallible>> {
-        pyo3_async_runtimes::tokio::get_runtime().block_on(async move {
-            let id = self.client.send_resp::<GetUniqueIdEndpoint>(&()).await?;
-            let mut padded_id = [0u8; 16];
-            padded_id[..12].copy_from_slice(&id);
-            Ok(u128::from_le_bytes(padded_id))
-        })
+    async fn get_id(&self) -> Result<u128, BoardError<Infallible>> {
+        let id = self.client.send_resp::<GetUniqueIdEndpoint>(&()).await?;
+        let mut padded_id = [0u8; 16];
+        padded_id[..12].copy_from_slice(&id);
+        Ok(u128::from_le_bytes(padded_id))
     }
 
     /// Set the angle of the servo.
     ///
     /// :param channel: The channel to set the servo on (1-4), corresponding to PWM channels on pins PB6-PB9.
     /// :param angle: The angle to set the servo to (0-180).
-    pub fn set_angle(&mut self, channel: u8, angle: u8) -> Result<(), BoardError<Infallible>> {
+    fn set_angle(&mut self, channel: u8, angle: u8) -> Result<(), BoardError<Infallible>> {
         if channel < 1 || channel > 4 {
             return Err(BoardError::InvalidData("Invalid channel".to_string()));
         }
@@ -102,7 +98,7 @@ impl ServoClient {
     /// Get the angle of the servo on channel 1-4.
     ///
     /// :return: The angle of the servo (0-180).
-    pub fn get_angle(&self, channel: u8) -> Result<u8, BoardError<Infallible>> {
+    fn get_angle(&self, channel: u8) -> Result<u8, BoardError<Infallible>> {
         let channel = PwmChannel::try_from(channel)
             .map_err(|_| BoardError::InvalidData("Invalid channel".to_string()))?;
 
@@ -132,7 +128,7 @@ impl ServoClient {
         min_angle_duty_cycle = None,
         max_angle_duty_cycle = None,
     ))]
-    pub fn configure_channel(
+    async fn configure_channel(
         &mut self,
         channel: u8,
         enabled: Option<bool>,
@@ -140,40 +136,36 @@ impl ServoClient {
         min_angle_duty_cycle: Option<u16>,
         max_angle_duty_cycle: Option<u16>,
     ) -> Result<(), BoardError<Infallible>> {
-        pyo3_async_runtimes::tokio::get_runtime().block_on(async move {
-            let channel = PwmChannel::try_from(channel)
-                .map_err(|_| BoardError::InvalidData("Invalid channel".to_string()))?;
-            let channel_config = &mut self.config.channels[channel as usize];
+        let channel = PwmChannel::try_from(channel)
+            .map_err(|_| BoardError::InvalidData("Invalid channel".to_string()))?;
+        let channel_config = &mut self.config.channels[channel as usize];
 
-            channel_config.enabled = enabled.unwrap_or(channel_config.enabled);
-            channel_config.current_duty_cycle =
-                current_duty_cycle.unwrap_or(channel_config.current_duty_cycle);
-            channel_config.min_angle_duty_cycle =
-                min_angle_duty_cycle.unwrap_or(channel_config.min_angle_duty_cycle);
-            channel_config.max_angle_duty_cycle =
-                max_angle_duty_cycle.unwrap_or(channel_config.max_angle_duty_cycle);
+        channel_config.enabled = enabled.unwrap_or(channel_config.enabled);
+        channel_config.current_duty_cycle =
+            current_duty_cycle.unwrap_or(channel_config.current_duty_cycle);
+        channel_config.min_angle_duty_cycle =
+            min_angle_duty_cycle.unwrap_or(channel_config.min_angle_duty_cycle);
+        channel_config.max_angle_duty_cycle =
+            max_angle_duty_cycle.unwrap_or(channel_config.max_angle_duty_cycle);
 
-            let channel_config = channel_config.clone();
+        let channel_config = channel_config.clone();
 
-            self.client
-                .send_resp::<protocol::ConfigureChannel>(&((channel, channel_config)))
-                .await?;
-            Ok(())
-        })
+        self.client
+            .send_resp::<protocol::ConfigureChannel>(&((channel, channel_config)))
+            .await?;
+        Ok(())
     }
 
     /// Get the servo configuration.
     /// This function returns the current configuration of the servo channels.
     /// :return: The ServoConfig object.
-    pub fn update_config(&mut self) -> Result<(), BoardError<Infallible>> {
-        pyo3_async_runtimes::tokio::get_runtime().block_on(async move {
-            let config = self
-                .client
-                .send_resp::<protocol::GetServoConfig>(&())
-                .await?;
-            self.config = config;
-            Ok(())
-        })
+    async fn update_config(&mut self) -> Result<(), BoardError<Infallible>> {
+        let config = self
+            .client
+            .send_resp::<protocol::GetServoConfig>(&())
+            .await?;
+        self.config = config;
+        Ok(())
     }
 
     /// Set the frequency of the PWM signal.
@@ -182,16 +174,14 @@ impl ServoClient {
     /// channels will be disabled when the frequency is changed, as the max duty cycle
     /// changes and settings need to be readjusted.
     /// :param frequency: The frequency to set in Hz.
-    pub fn set_frequency(&mut self, frequency: u32) -> Result<(), BoardError<Infallible>> {
-        pyo3_async_runtimes::tokio::get_runtime().block_on(async move {
-            self.client
-                .send_resp::<protocol::SetFrequencyEndpoint>(&frequency)
-                .await?;
-            self.update_config()
-        })
+    async fn set_frequency(&mut self, frequency: u32) -> Result<(), BoardError<Infallible>> {
+        self.client
+            .send_resp::<protocol::SetFrequencyEndpoint>(&frequency)
+            .await?;
+        self.update_config()
     }
 
-    pub fn angle_to_duty_cycle(&self, angle: u8, min_duty_cycle: u16, max_duty_cycle: u16) -> u16 {
+    fn angle_to_duty_cycle(&self, angle: u8, min_duty_cycle: u16, max_duty_cycle: u16) -> u16 {
         if angle > 180 {
             return max_duty_cycle;
         }
@@ -200,12 +190,7 @@ impl ServoClient {
         duty_cycle.round() as u16
     }
 
-    pub fn duty_cycle_to_angle(
-        &self,
-        duty_cycle: u16,
-        min_duty_cycle: u16,
-        max_duty_cycle: u16,
-    ) -> u8 {
+    fn duty_cycle_to_angle(&self, duty_cycle: u16, min_duty_cycle: u16, max_duty_cycle: u16) -> u8 {
         if duty_cycle < min_duty_cycle {
             return 0;
         }
@@ -219,7 +204,7 @@ impl ServoClient {
     }
 
     /// Convert microseconds to duty cycle.
-    pub fn us_to_duty_cycle(&self, us: u32) -> u16 {
+    fn us_to_duty_cycle(&self, us: u32) -> u16 {
         let frequency = self.config.servo_frequency as f32;
         let period = 1_000_000.0 / frequency;
         let us = us as f32;

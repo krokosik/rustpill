@@ -70,6 +70,7 @@ pub async fn connect_to_board(
 pub enum BoardError<E: Debug> {
     Comms(HostErr<WireError>),
     Protocol(SchemaError<WireError>),
+    #[allow(dead_code)]
     Endpoint(E),
     InvalidData(String),
 }
