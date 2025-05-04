@@ -13,14 +13,13 @@ use embassy_stm32::{
     },
     usb,
 };
-use embassy_time::{Duration, Ticker, Timer};
+use embassy_time::Timer;
 use embassy_usb::UsbDevice;
 use postcard_rpc::{
     define_dispatch,
     header::VarHeader,
-    sender_fmt,
     server::{
-        Dispatch, Sender, Server,
+        Dispatch, Server,
         impls::embassy_usb_v0_4::dispatch_impl::{WireRxBuf, WireSpawnImpl},
     },
 };
@@ -171,22 +170,6 @@ async fn server_task(mut server: AppServer) {
 
         // This is a workaround for the USB stack to work properly.
         Timer::after_millis(1).await;
-    }
-}
-
-#[embassy_executor::task]
-pub async fn logging_task(sender: Sender<AppTx>) {
-    let mut ticker = Ticker::every(Duration::from_millis(1000));
-    let mut ctr = 0u16;
-    loop {
-        ticker.next().await;
-        defmt::info!("logging");
-        if ctr & 0b1 != 0 {
-            let _ = sender.log_str("Hello world!").await;
-        } else {
-            let _ = sender_fmt!(sender, "formatted: {ctr}").await;
-        }
-        ctr = ctr.wrapping_add(1);
     }
 }
 
