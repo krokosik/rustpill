@@ -1,7 +1,22 @@
 #![no_std]
 #![no_main]
 
-use embassy_stm32::{Config, time::Hertz};
+use embassy_stm32::{Config, peripherals, time::Hertz, usb};
+use embassy_sync::blocking_mutex::raw::ThreadModeRawMutex;
+use postcard_rpc::server::impls::embassy_usb_v0_4::{
+    PacketBuffers,
+    dispatch_impl::{WireRxImpl, WireStorage, WireTxImpl},
+};
+use static_cell::ConstStaticCell;
+
+pub type AppDriver = usb::Driver<'static, peripherals::USB>;
+pub type AppStorage = WireStorage<ThreadModeRawMutex, AppDriver, 256, 256, 64, 256>;
+pub type BufStorage = PacketBuffers<1024, 1024>;
+pub type AppTx = WireTxImpl<ThreadModeRawMutex, AppDriver>;
+pub type AppRx = WireRxImpl<AppDriver>;
+
+pub static PBUFS: ConstStaticCell<BufStorage> = ConstStaticCell::new(BufStorage::new());
+pub static STORAGE: AppStorage = AppStorage::new();
 
 pub fn enable_usb_clock(config: &mut Config) {
     use embassy_stm32::rcc::*;

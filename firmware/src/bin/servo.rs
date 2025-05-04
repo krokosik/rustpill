@@ -2,45 +2,43 @@
 #![no_main]
 
 use embassy_executor::Spawner;
-use embassy_stm32::gpio::{Level, Output, OutputType, Speed};
-use embassy_stm32::time::Hertz;
-use embassy_stm32::timer::simple_pwm::{PwmPin, SimplePwm, SimplePwmChannel};
-use embassy_stm32::usb;
-use embassy_stm32::{Config, bind_interrupts, peripherals, timer};
-use embassy_sync::blocking_mutex::raw::ThreadModeRawMutex;
+use embassy_stm32::{
+    Config, bind_interrupts,
+    gpio::{Level, Output, OutputType, Speed},
+    peripherals,
+    time::Hertz,
+    timer::{
+        self,
+        simple_pwm::{PwmPin, SimplePwm, SimplePwmChannel},
+    },
+    usb,
+};
 use embassy_time::{Duration, Ticker, Timer};
 use embassy_usb::UsbDevice;
-use postcard_rpc::header::VarHeader;
-use postcard_rpc::server::impls::embassy_usb_v0_4::PacketBuffers;
-use postcard_rpc::server::impls::embassy_usb_v0_4::dispatch_impl::{
-    WireRxBuf, WireRxImpl, WireSpawnImpl, WireStorage, WireTxImpl,
+use postcard_rpc::{
+    define_dispatch,
+    header::VarHeader,
+    sender_fmt,
+    server::{
+        Dispatch, Sender, Server,
+        impls::embassy_usb_v0_4::dispatch_impl::{WireRxBuf, WireSpawnImpl},
+    },
 };
-use postcard_rpc::server::{Dispatch, Sender, Server};
-use postcard_rpc::{define_dispatch, sender_fmt};
 use protocol::{
     ConfigureChannel, GetServoConfig, GetUniqueIdEndpoint, PingX2Endpoint, PwmChannel,
     SERVO_ENDPOINT_LIST, ServoChannelConfig, ServoConfig, SetFrequencyEndpoint, TOPICS_IN_LIST,
     TOPICS_OUT_LIST,
 };
-use static_cell::ConstStaticCell;
 use {defmt_rtt as _, panic_probe as _};
 
-use firmware::{enable_usb_clock, get_usb_config};
+use firmware::{AppDriver, AppRx, AppTx, PBUFS, STORAGE, enable_usb_clock, get_usb_config};
 
 pub struct Context {
     pwm: SimplePwm<'static, peripherals::TIM4>,
     config: ServoConfig,
 }
 
-type AppDriver = usb::Driver<'static, peripherals::USB>;
-type AppStorage = WireStorage<ThreadModeRawMutex, AppDriver, 256, 256, 64, 256>;
-type BufStorage = PacketBuffers<1024, 1024>;
-type AppTx = WireTxImpl<ThreadModeRawMutex, AppDriver>;
-type AppRx = WireRxImpl<AppDriver>;
-type AppServer = Server<AppTx, AppRx, WireRxBuf, MyApp>;
-
-static PBUFS: ConstStaticCell<BufStorage> = ConstStaticCell::new(BufStorage::new());
-static STORAGE: AppStorage = AppStorage::new();
+pub type AppServer = Server<AppTx, AppRx, WireRxBuf, MyApp>;
 
 const SERVO_FREQ: Hertz = Hertz(50);
 const SERVO_MIN_US: u32 = 500;
