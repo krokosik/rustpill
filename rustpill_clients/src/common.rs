@@ -16,6 +16,8 @@ pub async fn connect_to_board(
     let client = HostClient::new_raw_nusb(
         |d| {
             if port.is_some() {
+                log::info!("Trying to connect to port {}", port.unwrap());
+
                 #[cfg(target_os = "windows")]
                 {
                     assert!(port.unwrap().starts_with("COM"));
@@ -27,6 +29,7 @@ pub async fn connect_to_board(
                     d.sysfs_path() == PathBuf::from(port.unwrap())
                 }
             } else {
+                log::info!("Trying to connect to first available device");
                 d.product_string() == Some("bluepill-servo")
             }
         },
