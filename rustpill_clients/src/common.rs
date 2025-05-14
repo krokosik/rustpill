@@ -38,8 +38,10 @@ pub async fn connect_to_board(
         VarSeqKind::Seq2,
     );
 
+    log::info!("Connected to servo board");
+
     log::info!(
-        "Connected to board. Protocol schemas:\n{:?}",
+        "Fetched protocol schemas:\n{:?}",
         client.get_schema_report().await?
     );
 

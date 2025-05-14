@@ -31,7 +31,6 @@ impl ServoClient {
 
         let config = client.send_resp::<protocol::GetServoConfig>(&()).await?;
         log::info!("Servo config: {:?}", config);
-        log::info!("Servo client connected to board");
 
         Ok(Self { client, config })
     }
