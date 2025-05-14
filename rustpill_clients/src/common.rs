@@ -48,7 +48,7 @@ pub async fn connect_to_board(
     let mut logsub = client.subscribe_multi::<LoggingTopic>(64).await.unwrap();
 
     // Spawn a background task to handle log messages
-    pyo3_async_runtimes::tokio::get_runtime().spawn(async move {
+    tokio::task::spawn(async move {
         log::info!("Starting log subscription");
         loop {
             match logsub.recv().await {
