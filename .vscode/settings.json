@@ -9,6 +9,7 @@
   },
   "rust-analyzer.cargo.allTargets": false,
   "rust-analyzer.check.workspace": false,
+  "rust-analyzer.lens.enable": false,
   "[rust]": {
     "editor.defaultFormatter": "rust-lang.rust-analyzer"
   },

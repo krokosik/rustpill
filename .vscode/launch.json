@@ -10,10 +10,9 @@
             "name": "probe-rs binary",
             "cwd": "${workspaceFolder}",
             "runtimeExecutable": "probe-rs",
-            "runtimeArgs": [
-                "dap-server"
-            ],
+            "preLaunchTask": "Build firmware",
             "chip": "STM32F103C8",
+            "wireProtocol": "Swd",
             "flashingConfig": {
                 "flashingEnabled": true,
                 "haltAfterReset": false,
@@ -22,18 +21,8 @@
                 {
                     "coreIndex": 0,
                     "programBinary": "target\\thumbv7m-none-eabi\\debug\\${fileBasenameNoExtension}",
+                    "svdFile": "STM32F103.svd",
                     "rttEnabled": true,
-                    "rttChannelFormats": [
-                        {
-                            "dataFormat": "String",
-                            "channelNumber": 0,
-                            "showTimestamps": false
-                        },
-                        {
-                            "dataFormat": "BinaryLE",
-                            "channelNumber": 1
-                        }
-                    ]
                 },
             ],
             "consoleLogLevel": "Console",

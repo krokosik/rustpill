@@ -65,7 +65,11 @@ fn flash(binary: &str) -> Result<(), DynError> {
 
     let mut cmd = Command::new("probe-rs");
 
-    cmd.arg("run").arg("--chip=STM32F103C8").arg(target_bin);
+    cmd.arg("run")
+        .arg("--chip=STM32F103C8")
+        .arg("--protocol")
+        .arg("swd")
+        .arg(target_bin);
 
     let status = cmd.status()?;
     if !status.success() {
