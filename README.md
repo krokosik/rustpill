@@ -42,6 +42,7 @@ Here is a brief description of each crate:
 
 ## Wishlist
 
+- debugging with `probe-rs`
 - expand the firmware and port more Cube code
 - figure out how to pass sender to handler, to support easy logging
 - fix the `firmare` runner, which is ignored when using `forced-target`, i.e. find a way to make the Cargo workspace work nicer. [cargo issue](https://github.com/rust-lang/cargo/issues/14833)
