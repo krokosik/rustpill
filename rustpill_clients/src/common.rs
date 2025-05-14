@@ -13,11 +13,15 @@ use std::path::PathBuf;
 pub async fn connect_to_board(
     port: Option<&str>,
 ) -> Result<HostClient<WireError>, BoardError<Infallible>> {
+    if port.is_some() {
+        log::info!("Connecting to port {}", port.unwrap());
+    } else {
+        log::info!("Connecting to first available device");
+    }
+
     let client = HostClient::new_raw_nusb(
         |d| {
             if port.is_some() {
-                log::info!("Trying to connect to port {}", port.unwrap());
-
                 #[cfg(target_os = "windows")]
                 {
                     assert!(port.unwrap().starts_with("COM"));
@@ -29,7 +33,6 @@ pub async fn connect_to_board(
                     d.sysfs_path() == PathBuf::from(port.unwrap())
                 }
             } else {
-                log::info!("Trying to connect to first available device");
                 d.product_string() == Some("bluepill-servo")
             }
         },
@@ -37,6 +40,8 @@ pub async fn connect_to_board(
         8,
         VarSeqKind::Seq2,
     );
+
+    tokio::time::sleep(std::time::Duration::from_millis(100)).await;
 
     log::info!("Connected to servo board");
 
