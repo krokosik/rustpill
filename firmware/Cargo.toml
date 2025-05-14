@@ -20,7 +20,7 @@ embassy-stm32 = { workspace = true, features = [
     "stm32f103c8",
     "unstable-pac",
     "memory-x",
-    "time-driver-tim3",
+    "time-driver-tim1",
 ] }
 embassy-sync = { workspace = true, features = ["defmt"] }
 embassy-executor = { workspace = true, features = [
