@@ -49,6 +49,9 @@ proc-macro2 = "1.0"
 resolver = "2"
 members = ["firmware", "rustpill_clients", "protocol", "xtask", "macros"]
 
+[profile.dev]
+lto = "fat"
+
 [profile.dev.package.firmware]
 opt-level = "s"
 
