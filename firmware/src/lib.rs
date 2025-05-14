@@ -3,6 +3,7 @@
 
 use embassy_stm32::{Config, peripherals, time::Hertz, usb};
 use embassy_sync::blocking_mutex::raw::ThreadModeRawMutex;
+use embassy_usb::UsbDevice;
 use postcard_rpc::server::impls::embassy_usb_v0_4::{
     PacketBuffers,
     dispatch_impl::{WireRxImpl, WireStorage, WireTxImpl},
@@ -50,4 +51,18 @@ pub fn get_usb_config(product_name: &'static str) -> embassy_usb::Config<'static
     config.composite_with_iads = true;
 
     config
+}
+
+#[embassy_executor::task]
+pub async fn idle_task() {
+    loop {
+        embassy_futures::yield_now().await;
+    }
+}
+
+/// This handles the low level USB management
+#[embassy_executor::task]
+pub async fn usb_task(mut usb: UsbDevice<'static, AppDriver>) {
+    defmt::info!("USB started");
+    usb.run().await;
 }

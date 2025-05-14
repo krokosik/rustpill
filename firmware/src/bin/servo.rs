@@ -14,7 +14,6 @@ use embassy_stm32::{
     usb,
 };
 use embassy_time::Timer;
-use embassy_usb::UsbDevice;
 use postcard_rpc::{
     define_dispatch,
     header::VarHeader,
@@ -30,14 +29,14 @@ use protocol::{
 };
 use {defmt_rtt as _, panic_probe as _};
 
-use firmware::{AppDriver, AppRx, AppTx, PBUFS, STORAGE, enable_usb_clock, get_usb_config};
+use firmware::*;
 
-pub struct Context {
-    pwm: SimplePwm<'static, peripherals::TIM4>,
+struct Context {
+    pwm: SimplePwm<'static, peripherals::TIM4>, // Possibly expand to more timers in the future
     config: ServoConfig,
 }
 
-pub type AppServer = Server<AppTx, AppRx, WireRxBuf, MyApp>;
+type AppServer = Server<AppTx, AppRx, WireRxBuf, ServoApp>;
 
 const SERVO_FREQ: Hertz = Hertz(50);
 const SERVO_MIN_US: u32 = 500;
@@ -49,7 +48,7 @@ bind_interrupts!(struct Irqs {
 });
 
 define_dispatch! {
-    app: MyApp;
+    app: ServoApp;
     spawn_fn: spawn_fn;
     tx_impl: AppTx;
     spawn_impl: WireSpawnImpl;
@@ -132,33 +131,19 @@ async fn main(spawner: Spawner) {
         pwm,
     };
     let (device, tx_impl, rx_impl) = STORAGE.init(driver, usb_config, pbufs.tx_buf.as_mut_slice());
-    let dispather = MyApp::new(context, spawner.into());
-    let vkk = dispather.min_key_len();
+    let dispatcher = ServoApp::new(context, spawner.into());
+    let vkk = dispatcher.min_key_len();
     let server: AppServer = Server::new(
         tx_impl,
         rx_impl,
         pbufs.rx_buf.as_mut_slice(),
-        dispather,
+        dispatcher,
         vkk,
     );
 
     spawner.must_spawn(usb_task(device));
     spawner.must_spawn(server_task(server));
-    spawner.must_spawn(idle());
-}
-
-#[embassy_executor::task]
-async fn idle() {
-    loop {
-        embassy_futures::yield_now().await;
-    }
-}
-
-/// This handles the low level USB management
-#[embassy_executor::task]
-pub async fn usb_task(mut usb: UsbDevice<'static, AppDriver>) {
-    defmt::info!("USB started");
-    usb.run().await;
+    spawner.must_spawn(idle_task());
 }
 
 #[embassy_executor::task]
@@ -192,6 +177,13 @@ fn configure_channel_handler(
 
     let (channel, config) = rqst;
     let mut ch = get_channel(&mut context.pwm, channel);
+
+    defmt::info!(
+        "Configuring channel {}: {}/{}",
+        channel as usize,
+        config.current_duty_cycle,
+        context.config.max_duty_cycle
+    );
 
     ch.set_duty_cycle(config.current_duty_cycle);
     if config.enabled {
