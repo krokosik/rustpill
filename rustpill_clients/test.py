@@ -23,12 +23,14 @@ else:
 # %%
 servo.set_angle(2, 0)
 # %%
+servo.set_angle(2, 180)
+# %%
 servo.pingx2(2137)
 # %%
 servo.get_id()
 # %%
 servo.get_angle(2)
 # %%
-servo.set_angle(2, 180)
-# %%
 servo.config
+
+# %%
