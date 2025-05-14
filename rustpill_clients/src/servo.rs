@@ -78,7 +78,7 @@ impl ServoClient {
             return Err(BoardError::InvalidData("Invalid angle".to_string()));
         }
 
-        let channel_config = &self.config.channels[channel as usize];
+        let channel_config = &self.config.channels[channel as usize - 1];
 
         self.configure_channel(
             channel,
