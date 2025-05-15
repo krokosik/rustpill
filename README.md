@@ -8,20 +8,23 @@ This is a WIP implementation/exploration of using modern Rust technologies for m
     - [Asynchronous Programming in Rust](https://rust-lang.github.io/async-book/) both firmware and host client rely on async code, some basics about how it works in Rust are also of use.
 - **Postcard RPC** a framework for efficient, type-safe communication with the MCU. Their [repo](https://github.com/jamesmunns/postcard-rpc?tab=readme-ov-file) is probably the best place to start, with a very good overview that also explains the project structure.
 - **PyO3** a library to generate Python bindings from Rust code [guide](https://pyo3.rs/).
-- **probe-rs** used for flashing firmware and debugging code running on MCU. I haven't explored it that much yet.
+- **probe-rs** used for flashing firmware and debugging code running on MCU. Newer versions (last checked `0.27.0`) have some regression, which break debugging on Bluepill, so we use version `0.25.0` for now.
 
 ## Setup
 
-1. Install Rust via [rustup](https://www.rust-lang.org/tools/install) and [probe-rs](https://probe.rs/docs/getting-started/probe-setup) for flashing
+1. Install Rust via [rustup](https://www.rust-lang.org/tools/install) and `probe-rs` version `0.25.0` via:
+```powershell
+powershell -ExecutionPolicy ByPass -c "irm https://github.com/probe-rs/probe-rs/releases/download/v0.25.0/probe-rs-tools-installer.ps1 | iex"
+```
 2. Install the `uv` package manager for building Python bindings: https://docs.astral.sh/uv/getting-started/installation/
 3. If developing via WSL or Dev Container, you need to bind and attach the USB Bus via [usbipd-win](https://learn.microsoft.com/en-us/windows/wsl/connect-usb), but everything should work on Windows
 
 ## Workspace
 
-This repo is structued into 4 distinct crates that are managed together with a Cargo workspace. To run commands in one of them, just use 
+This repo is structued into 4 distinct crates that are managed together with a Cargo workspace. To run commands in one of them, just use the `-p` flag, for example to compile the firmware:
 
 ```
-cargo -p <package> <command>
+cargo build -p firmware --release
 ```
 
 Unfortunately, due to limitations of cargo, the workspace uses nightly features for multi target integration. Some things do not work perfectly, so we use `xtasks` for running commands rather than pure cargo.
@@ -35,14 +38,28 @@ Here is a brief description of each crate:
 
 ## How to start
 
-1. Connect the Bluepill board via ST-LINK
-2. Flash it with `cargo xtask flash servo` or any other binary
-3. Build Python bindings with the Maturin build tool: `cargo xtask pygen`
-4. Test the commands in the `test.py` file. Make sure you use the `uv` created local virtual environment.
+1. Connect the Bluepill board via ST-LINK, but do not connect the 3V pin (bend it to the side)
+2. Connect the Bluepill board to the PC via USB.
+3. Flash it with `cargo xtask flash servo` or any other binary
+4. Build Python bindings with the Maturin build tool: `cargo xtask pygen`
+5. Test the commands in the `test.py` file. Make sure you use the `uv` created local virtual environment.
+
+## Debugging
+
+Install the `probe-rs` VS Code extension and set breakpoints in the code. Go to the firmware binary code file, for example `servo.rs` and run the `probe-rs binary` debugger or simply press `F5`.
+
+Unfortunately, `probe-rs` is quite new and I have encountered several issues with it:
+- https://github.com/probe-rs/probe-rs/issues/3045
+- https://github.com/probe-rs/probe-rs/issues/3146
+- https://github.com/probe-rs/vscode/issues/114
+- https://github.com/probe-rs/vscode/issues/106
+
+It seems like they are Windows based, but I haven't tried Linux yet.
 
 ## Wishlist
 
-- debugging with `probe-rs`
+- debugging with `probe-rs` seems not fully functional. We may have to wait for better STM32 support, as the authors themselves admit it's not fully working now. We may want to evaluate more established solutions like OpenOCD + GDB
 - expand the firmware and port more Cube code
-- figure out how to pass sender to handler, to support easy logging
-- fix the `firmare` runner, which is ignored when using `forced-target`, i.e. find a way to make the Cargo workspace work nicer. [cargo issue](https://github.com/rust-lang/cargo/issues/14833)
+- another crate for RP Pico firmware
+- create a global defmt logger that sends data via a topic 
+- fix the `firmare` runner, which is ignored when using `forced-target`, i.e. find a way to make the Cargo workspace work nicer. [cargo issue](https://github.com/rust-lang/cargo/issues/14833). Another option might be to exclude firmware from workspace and use `linkedProjects` in Rust Analyzer

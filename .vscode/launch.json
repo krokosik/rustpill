@@ -21,7 +21,7 @@
                 {
                     "coreIndex": 0,
                     "programBinary": "target\\thumbv7m-none-eabi\\debug\\${fileBasenameNoExtension}",
-                    "svdFile": "STM32F103.svd",
+                    "svdFile": ".vscode\\STM32F103.svd",
                     "rttEnabled": true,
                 },
             ],
