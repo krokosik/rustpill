@@ -10,6 +10,10 @@ This is a WIP implementation/exploration of using modern Rust technologies for m
 - **PyO3** a library to generate Python bindings from Rust code [guide](https://pyo3.rs/).
 - **probe-rs** used for flashing firmware and debugging code running on MCU. Newer versions (last checked `0.27.0`) have some regression, which break debugging on Bluepill, so we use version `0.25.0` for now.
 
+Other interesting resources:
+- [Workbook for Embedded Workshops](https://embedded-trainings.ferrous-systems.com/preparations)
+- [The Embedonomicon](https://docs.rust-embedded.org/embedonomicon/preface.html)
+
 ## Setup
 
 1. Install Rust via [rustup](https://www.rust-lang.org/tools/install) and `probe-rs` version `0.25.0` via:
