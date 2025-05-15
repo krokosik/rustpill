@@ -24,6 +24,7 @@ build-backend = "maturin"
 
 [dependency-groups]
 dev = [
+    "basedpyright>=1.29.1",
     "ipykernel>=6.29.5",
     "maturin>=1.8.3",
 ]
