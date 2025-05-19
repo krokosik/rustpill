@@ -67,3 +67,4 @@ It seems like they are Windows based, but I haven't tried Linux yet.
 - another crate for RP Pico firmware
 - create a global defmt logger that sends data via a topic 
 - fix the `firmare` runner, which is ignored when using `forced-target`, i.e. find a way to make the Cargo workspace work nicer. [cargo issue](https://github.com/rust-lang/cargo/issues/14833). Another option might be to exclude firmware from workspace and use `linkedProjects` in Rust Analyzer
+- bundle `probe-rs` binary and firmware binaries in the Python wheel and expose a simple API for updating firmware 
