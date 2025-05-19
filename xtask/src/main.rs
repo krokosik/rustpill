@@ -80,13 +80,14 @@ fn flash(binary: &str) -> Result<(), DynError> {
 }
 
 fn publish() -> Result<(), DynError> {
+    copy_firmware_assets()?;
     build_stubs()?;
 
-    let mut cmd = pycmd();
+    let mut pycmd = pycmd();
 
-    cmd.arg("maturin").arg("publish").arg("--no-sdist");
+    pycmd.arg("maturin").arg("publish").arg("--no-sdist");
 
-    let status = cmd.status()?;
+    let status = pycmd.status()?;
     if !status.success() {
         return Err(format!("Failed to build bindings: {}", status).into());
     }
@@ -94,13 +95,14 @@ fn publish() -> Result<(), DynError> {
 }
 
 fn build_bindings() -> Result<(), DynError> {
+    copy_firmware_assets()?;
     build_stubs()?;
 
-    let mut cmd = pycmd();
+    let mut pycmd = pycmd();
 
-    cmd.arg("maturin").arg("develop");
+    pycmd.arg("maturin").arg("develop");
 
-    let status = cmd.status()?;
+    let status = pycmd.status()?;
     if !status.success() {
         return Err(format!("Failed to build bindings: {}", status).into());
     }
@@ -123,6 +125,53 @@ fn build_stubs() -> Result<(), DynError> {
     if !status.success() {
         return Err(format!("Failed to build type stubs: {}", status).into());
     }
+    Ok(())
+}
+
+fn copy_firmware_assets() -> Result<(), DynError> {
+    let cargo = env::var("CARGO").unwrap_or_else(|_| "cargo".to_string());
+    let mut cmd = Command::new(cargo);
+
+    cmd.current_dir(project_root())
+        .arg("build")
+        .arg("-p")
+        .arg("firmware")
+        .arg("--release");
+    let status = cmd.status()?;
+    if !status.success() {
+        return Err(format!("Failed to build firmware: {}", status).into());
+    }
+
+    let compiled_firmare_dir = project_root()
+        .join("target")
+        .join("thumbv7m-none-eabi")
+        .join("release");
+
+    let assets_dir = project_root().join("host").join("src").join("assets");
+
+    if !assets_dir.exists() {
+        std::fs::create_dir_all(&assets_dir)?;
+    }
+
+    let firmware_bin_dir = project_root().join("firmware").join("src").join("bin");
+
+    std::fs::read_dir(&firmware_bin_dir)?
+        .filter_map(Result::ok)
+        .map(|e| {
+            e.path()
+                .file_stem()
+                .and_then(|s| s.to_str())
+                .map(String::from)
+        })
+        .flatten()
+        .for_each(|firmware| {
+            std::fs::copy(
+                compiled_firmare_dir.join(&firmware),
+                assets_dir.join(&firmware),
+            )
+            .expect("Failed to copy firmware binary");
+        });
+
     Ok(())
 }
 

@@ -1,6 +1,6 @@
 # %%
 import logging
-from rustpill_clients import ServoClient
+from rustpill_clients import ServoClient, check_probe_rs, flash_binary, list_binaries
 
 FORMAT = "%(levelname)s %(name)s %(asctime)-15s %(filename)s:%(lineno)d %(message)s"
 logging.basicConfig(format=FORMAT)

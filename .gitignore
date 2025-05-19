@@ -18,3 +18,7 @@ target/
 
 .venv
 .env
+
+host/src/assets
+*.pyd
+__pycache__

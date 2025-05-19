@@ -118,3 +118,22 @@ class ServoConfig:
     max_duty_cycle: builtins.int
     channels: builtins.list[ServoChannelConfig]
 
+def check_probe_rs() -> None:
+    r"""
+    Checks if "probe-rs" is available in PATH. If not, prompts the user and
+    attempts installation.
+    """
+    ...
+
+def flash_binary(binary_name:builtins.str) -> None:
+    r"""
+    Flashes the specified binary by calling "cargo-flash" tool on the given binary.
+    """
+    ...
+
+def list_binaries() -> None:
+    r"""
+    Lists the binaries available in the "assets" directory relative to this source file.
+    """
+    ...
+
