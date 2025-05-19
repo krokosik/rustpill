@@ -47,7 +47,7 @@ proc-macro2 = "1.0"
 
 [workspace]
 resolver = "2"
-members = ["firmware", "rustpill_clients", "protocol", "xtask", "macros"]
+members = ["firmware", "host", "protocol", "xtask", "macros"]
 
 [profile.dev]
 lto = "fat"

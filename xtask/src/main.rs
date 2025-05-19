@@ -115,7 +115,7 @@ fn build_stubs() -> Result<(), DynError> {
 
     cmd.arg("run")
         .arg("-p")
-        .arg("rustpill_clients")
+        .arg("host")
         .arg("--release")
         .arg("--bin=stub_gen");
 
@@ -128,7 +128,7 @@ fn build_stubs() -> Result<(), DynError> {
 
 fn pycmd() -> Command {
     let mut cmd = Command::new("uv");
-    cmd.current_dir(project_root().join("rustpill_clients"));
+    cmd.current_dir(project_root().join("host"));
     cmd.arg("run");
     cmd
 }

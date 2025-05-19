@@ -1,5 +1,5 @@
 [package]
-name = "rustpill_clients"
+name = "host"
 version.workspace = true
 edition.workspace = true
 license-file.workspace = true
@@ -7,6 +7,7 @@ description = "Python bindings for RustPill"
 repository.workspace = true
 
 [lib]
+name = "rustpill_clients"
 crate-type = ["cdylib", "rlib"]
 
 [[bin]]
