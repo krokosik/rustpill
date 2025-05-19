@@ -19,6 +19,8 @@ endpoints! {
     | ConfigureChannel          | (PwmChannel, ServoChannelConfig)     | ()                    | "servo/channel"   |
     | GetServoConfig            | ()                                   | ServoConfig           | "servo/config"    |
     | SetFrequencyEndpoint      | u32                                  | ()                    | "servo/frequency" |
+    | StartDefmtLoggingEndpoint | ()                                   | ()                    | "defmt/start"   |
+    | StopDefmtLoggingEndpoint  | ()                                   | ()                    | "defmt/stop" |
 }
 
 topics! {
@@ -31,8 +33,9 @@ topics! {
 topics! {
     list = TOPICS_OUT_LIST;
     direction = TopicDirection::ToClient;
-    | TopicTy                   | MessageTy     | Path              | Cfg                           |
-    | -------                   | ---------     | ----              | ---                           |
+    | TopicTy                   | MessageTy         | Path              | Cfg   |
+    | -------                   | ---------         | ----              | ---   |
+    | DefmtLoggingTopic         | (u8, [u8; 32])    | "defmt/log"       |       |
 }
 
 #[derive(Serialize, Deserialize, Schema, Debug, PartialEq, Clone, Copy)]
