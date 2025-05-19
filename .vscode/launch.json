@@ -20,7 +20,7 @@
             "coreConfigs": [
                 {
                     "coreIndex": 0,
-                    "programBinary": "target\\thumbv7m-none-eabi\\debug\\${fileBasenameNoExtension}",
+                    "programBinary": "target\\thumbv7m-none-eabi\\release\\${fileBasenameNoExtension}",
                     "svdFile": ".vscode\\STM32F103.svd",
                     "rttEnabled": true,
                 },

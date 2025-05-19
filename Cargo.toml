@@ -55,5 +55,12 @@ lto = "fat"
 [profile.dev.package.firmware]
 opt-level = "s"
 
+### Uncomment below to decrease release binary size
+[profile.release]
+lto = "fat"
+
 [profile.release.package.firmware]
+opt-level = "s"
+incremental = false
+codegen-units = 1
 debug = 2

@@ -6,10 +6,8 @@
             "type": "shell",
             "command": "cargo",
             "args": [
-                "build",
-                "-p",
-                "firmware",
-                "--bin",
+                "xtask",
+                "flash",
                 "${fileBasenameNoExtension}"
             ],
             "group": {
