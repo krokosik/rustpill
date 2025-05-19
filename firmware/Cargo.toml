@@ -49,3 +49,4 @@ panic-probe = { workspace = true, features = ["print-defmt"] }
 heapless = { workspace = true }
 nb = { workspace = true }
 static_cell = { workspace = true }
+defmt-bbq2 = { git = "https://github.com/krokosik/defmt-bbq2", version = "0.1.0" }
