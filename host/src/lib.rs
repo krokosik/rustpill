@@ -1,6 +1,7 @@
 use pyo3::{ffi::c_str, prelude::*};
 
 mod common;
+mod flash;
 mod servo;
 
 use pyo3_stub_gen::define_stub_info_gatherer;
@@ -27,6 +28,9 @@ if not logging.getLogger().hasHandlers():
 
     pyo3_log::init();
 
+    m.add_function(wrap_pyfunction!(flash::check_probe_rs, m)?)?;
+    m.add_function(wrap_pyfunction!(flash::list_binaries, m)?)?;
+    m.add_function(wrap_pyfunction!(flash::flash_binary, m)?)?;
     m.add_class::<ServoClient>()?;
     Ok(())
 }
