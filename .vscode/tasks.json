@@ -6,10 +6,18 @@
             "type": "shell",
             "command": "cargo",
             "args": [
-                "xtask",
-                "flash",
+                "build",
+                "-p",
+                "firmware",
+                "--release",
+                "--bin",
                 "${fileBasenameNoExtension}"
             ],
+            "options": {
+                "env": {
+                    "DEFMT_LOG": "info",
+                }
+            },
             "group": {
                 "kind": "build",
                 "isDefault": false

@@ -16,9 +16,9 @@ Other interesting resources:
 
 ## Setup
 
-1. Install Rust via [rustup](https://www.rust-lang.org/tools/install) and `probe-rs` version `0.25.0` via:
+1. Install Rust via [rustup](https://www.rust-lang.org/tools/install) and `probe-rs` version `0.28.0` via:
 ```powershell
-powershell -ExecutionPolicy ByPass -c "irm https://github.com/probe-rs/probe-rs/releases/download/v0.25.0/probe-rs-tools-installer.ps1 | iex"
+powershell -ExecutionPolicy ByPass -c "irm https://github.com/probe-rs/probe-rs/releases/download/v0.28.0/probe-rs-tools-installer.ps1 | iex"
 ```
 2. Install the `uv` package manager for building Python bindings: https://docs.astral.sh/uv/getting-started/installation/
 3. If developing via WSL or Dev Container, you need to bind and attach the USB Bus via [usbipd-win](https://learn.microsoft.com/en-us/windows/wsl/connect-usb), but everything should work on Windows
@@ -36,7 +36,7 @@ Here is a brief description of each crate:
 
 - **protocol** here we define statically typed message formats, endpoints and topics (streamed data). It is built automatically when building the dependent host and firmware crates.
 - **firmware** MCU codes with different functionalities. Each binary is one firmware and you select which one you want to flash by adding `--bin <name>` to the flash command.
-- **rustpill_clients** the host crate where Rust clients are defined and then Python bindings are generated on top of them.
+- **host** the host crate where Rust clients are defined and then Python bindings are generated on top of them.
 - **xtasks** Rust written build scripts, kind of like `make` [more info](https://github.com/matklad/cargo-xtask)
 - **macros** For convenience, custom Rust macros (codegen tools) are stored in a separate crate.
 
@@ -52,17 +52,11 @@ Here is a brief description of each crate:
 
 Install the `probe-rs` VS Code extension and set breakpoints in the code. Go to the firmware binary code file, for example `servo.rs` and run the `probe-rs binary` debugger or simply press `F5`.
 
-Unfortunately, `probe-rs` is quite new and I have encountered several issues with it:
+There are some issues to be ironed out in the config or the tool itself though:
 - https://github.com/probe-rs/probe-rs/issues/3045
-- https://github.com/probe-rs/probe-rs/issues/3146
-- https://github.com/probe-rs/vscode/issues/114
-- https://github.com/probe-rs/vscode/issues/106
-
-It seems like they are Windows based, but I haven't tried Linux yet.
 
 ## Wishlist
 
-- debugging with `probe-rs` seems not fully functional. We may have to wait for better STM32 support, as the authors themselves admit it's not fully working now. We may want to evaluate more established solutions like OpenOCD + GDB
 - expand the firmware and port more Cube code
 - another crate for RP Pico firmware
 - create a global defmt logger that sends data via a topic 
