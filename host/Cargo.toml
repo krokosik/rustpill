@@ -38,3 +38,4 @@ pyo3-stub-gen = { workspace = true }
 pyo3-stub-gen-derive = { workspace = true }
 tokio = { workspace = true, features = ["macros", "time", "rt-multi-thread"] }
 serde = { workspace = true }
+defmt-decoder = "1.0.0"

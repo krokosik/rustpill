@@ -17,7 +17,7 @@ use postcard_rpc::{
     define_dispatch,
     header::VarHeader,
     server::{
-        Dispatch, Server,
+        Dispatch, Sender, Server,
         impls::embassy_usb_v0_4::dispatch_impl::{WireRxBuf, WireSpawnImpl},
     },
 };
@@ -72,6 +72,8 @@ define_dispatch! {
 
 #[embassy_executor::main]
 async fn main(spawner: Spawner) {
+    let consumer = defmt_bbq2::init().unwrap();
+
     let mut config = Config::default();
     enable_usb_clock(&mut config);
     let mut p = embassy_stm32::init(config);
@@ -130,9 +132,41 @@ async fn main(spawner: Spawner) {
         vkk,
     );
 
+    let sender = server.sender();
+
     spawner.must_spawn(usb_task(device));
     spawner.must_spawn(server_task(server));
     spawner.must_spawn(idle_task());
+    spawner.must_spawn(logging_task(sender, consumer));
+}
+
+#[embassy_executor::task]
+async fn logging_task(sender: Sender<AppTx>, mut consumer: defmt_bbq2::DefmtConsumer) {
+    let mut cnt = 0u32;
+    let mut buf = [0u8; 32];
+    let buf_len = buf.len();
+    loop {
+        let grant = consumer.read().await;
+        let mut n = grant.len();
+        while n > 0 {
+            if n > buf_len {
+                buf.copy_from_slice(&grant[..buf_len]);
+                n -= buf_len;
+                sender
+                    .publish::<protocol::DefmtLoggingTopic>(cnt.into(), &(buf_len as u8, buf))
+                    .await
+                    .unwrap();
+            } else {
+                buf[..n].copy_from_slice(&grant[..n]);
+                sender
+                    .publish::<protocol::DefmtLoggingTopic>(cnt.into(), &(n as u8, buf))
+                    .await
+                    .unwrap();
+                n = 0;
+            }
+            cnt = cnt.wrapping_add(1);
+        }
+    }
 }
 
 #[embassy_executor::task]
