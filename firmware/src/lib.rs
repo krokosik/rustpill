@@ -43,6 +43,13 @@ pub fn get_usb_config(product_name: &'static str) -> embassy_usb::Config<'static
     config.product = Some(product_name);
     config.serial_number = Some(str::from_utf8(embassy_stm32::uid::uid()).unwrap());
 
+    let version_bcd = 0
+        + (env!("CARGO_PKG_VERSION_MAJOR").parse::<u16>().unwrap() << 8)
+        + (env!("CARGO_PKG_VERSION_MINOR").parse::<u16>().unwrap() << 4)
+        + env!("CARGO_PKG_VERSION_PATCH").parse::<u16>().unwrap();
+
+    config.device_release = version_bcd;
+
     // Required for windows compatibility.
     // https://developer.nordicsemi.com/nRF_Connect_SDK/doc/1.9.1/kconfig/CONFIG_CDC_ACM_IAD.html#help
     config.device_class = 0xEF;
