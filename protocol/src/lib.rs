@@ -14,7 +14,6 @@ endpoints! {
     omit_std = true;
     | EndpointTy                | RequestTy                            | ResponseTy            | Path              |
     | ----------                | ---------                            | ----------            | ----              |
-    | PingX2Endpoint            | u32                                  | u32                   | "pingx2"          |
     | GetUniqueIdEndpoint       | ()                                   | [u8; 12]              | "unique_id/get"   |
     | ConfigureChannel          | (PwmChannel, ServoChannelConfig)     | ()                    | "servo/channel"   |
     | GetServoConfig            | ()                                   | ServoConfig           | "servo/config"    |

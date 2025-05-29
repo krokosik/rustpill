@@ -23,9 +23,8 @@ use postcard_rpc::{
     },
 };
 use protocol::{
-    ConfigureChannel, GetServoConfig, GetUniqueIdEndpoint, PingX2Endpoint, PwmChannel,
-    SERVO_ENDPOINT_LIST, ServoChannelConfig, ServoConfig, SetFrequencyEndpoint, TOPICS_IN_LIST,
-    TOPICS_OUT_LIST,
+    ConfigureChannel, GetServoConfig, GetUniqueIdEndpoint, PwmChannel, SERVO_ENDPOINT_LIST,
+    ServoChannelConfig, ServoConfig, SetFrequencyEndpoint, TOPICS_IN_LIST, TOPICS_OUT_LIST,
 };
 use {defmt_rtt as _, panic_probe as _};
 
@@ -59,7 +58,6 @@ define_dispatch! {
 
         | EndpointTy                | kind      | handler                       |
         | ----------                | ----      | -------                       |
-        | PingX2Endpoint            | blocking  | pingx2_handler                |
         | GetUniqueIdEndpoint       | blocking  | unique_id_handler             |
         | ConfigureChannel          | blocking  | configure_channel_handler     |
         | GetServoConfig            | blocking  | get_servo_config_handler      |
@@ -152,15 +150,7 @@ async fn server_task(mut server: AppServer) {
         // If the host disconnects, we'll return an error here.
         // If this happens, just wait until the host reconnects
         let _ = server.run().await;
-
-        // This is a workaround for the USB stack to work properly.
-        Timer::after_millis(1).await;
     }
-}
-
-fn pingx2_handler(_context: &mut Context, _header: VarHeader, rqst: u32) -> u32 {
-    defmt::info!("pingx2");
-    rqst * 2
 }
 
 fn unique_id_handler(_context: &mut Context, _header: VarHeader, _rqst: ()) -> [u8; 12] {

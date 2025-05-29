@@ -7,31 +7,19 @@ use postcard_rpc::{
 };
 use pyo3::prelude::*;
 
-#[cfg(target_os = "linux")]
-use std::path::PathBuf;
-
 pub async fn connect_to_board(
-    port: Option<&str>,
+    serial_number: Option<&str>,
 ) -> Result<HostClient<WireError>, BoardError<Infallible>> {
-    if port.is_some() {
-        log::info!("Connecting to port {}", port.unwrap());
+    if serial_number.is_some() {
+        log::info!("Connecting to device with S/N: {}", serial_number.unwrap());
     } else {
         log::info!("Connecting to first available device");
     }
 
     let client = HostClient::new_raw_nusb(
         |d| {
-            if port.is_some() {
-                #[cfg(target_os = "windows")]
-                {
-                    assert!(port.unwrap().starts_with("COM"));
-                    format!("COM{}", d.port_number()) == port.unwrap()
-                }
-
-                #[cfg(target_os = "linux")]
-                {
-                    d.sysfs_path() == PathBuf::from(port.unwrap())
-                }
+            if serial_number.is_some() {
+                d.serial_number() == serial_number
             } else {
                 d.product_string() == Some("bluepill-servo")
             }
@@ -41,14 +29,7 @@ pub async fn connect_to_board(
         VarSeqKind::Seq2,
     );
 
-    tokio::time::sleep(std::time::Duration::from_millis(100)).await;
-
-    log::info!("Connected to servo board");
-
-    log::info!(
-        "Fetched protocol schemas:\n{:?}",
-        client.get_schema_report().await?
-    );
+    log::info!("Connected to servo board with");
 
     let mut logsub = client.subscribe_multi::<LoggingTopic>(64).await.unwrap();
 

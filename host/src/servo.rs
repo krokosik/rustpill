@@ -1,6 +1,6 @@
 use macros::blocking_async;
 use postcard_rpc::{host_client::HostClient, standard_icd::WireError};
-use protocol::{GetUniqueIdEndpoint, PingX2Endpoint, PwmChannel, ServoConfig};
+use protocol::{GetUniqueIdEndpoint, PwmChannel, ServoConfig};
 use pyo3::prelude::*;
 use pyo3_stub_gen::derive::*;
 use std::convert::Infallible;
@@ -9,8 +9,8 @@ use crate::common::{BoardError, connect_to_board};
 
 const STM32_PWM_RESOLUTION_BITS: u8 = 16;
 
-/// This class communicates with Bluepill Servo Rust firmware. You can pass a port string to the
-/// constructor to connect to a specific port. If no port is passed, it will try to connect to the first
+/// This class communicates with Bluepill Servo Rust firmware. You can pass a serial number to the
+/// constructor to connect to a specific device. If no port is passed, it will try to connect to the first
 /// available device by product string.
 #[gen_stub_pyclass]
 #[pyclass]
@@ -25,9 +25,9 @@ pub struct ServoClient {
 #[pymethods]
 impl ServoClient {
     #[new]
-    #[pyo3(signature = (port = None))]
-    async fn new(port: Option<&str>) -> Result<Self, BoardError<Infallible>> {
-        let client = connect_to_board(port).await?;
+    #[pyo3(signature = (serial_number = None))]
+    async fn new(serial_number: Option<&str>) -> Result<Self, BoardError<Infallible>> {
+        let client = connect_to_board(serial_number).await?;
 
         let config = client.send_resp::<protocol::GetServoConfig>(&()).await?;
         log::info!("Servo config: {:?}", config);
@@ -45,21 +45,11 @@ impl ServoClient {
         !self.client.is_closed()
     }
 
-    /// Send a ping to the board and return the response.
-    /// A number is sent to the device, and the device is expected to return the same number times 2.
-    ///
-    /// :param val: The number to send to the device.
-    /// :return: The number returned by the device: val * 2.
-    async fn pingx2(&self, val: u32) -> Result<u32, BoardError<Infallible>> {
-        let dbl_val = self.client.send_resp::<PingX2Endpoint>(&val).await?;
-        Ok(dbl_val)
-    }
-
-    /// Get the unique ID of the board.
+    /// Get the serial number of the board.
     /// The ID is a 92-bit number, which is padded to 128 bits with zeros.
     ///
-    /// :return: The unique ID of the board.
-    async fn get_id(&self) -> Result<u128, BoardError<Infallible>> {
+    /// :return: The serial number of the board.
+    async fn get_serial_number(&self) -> Result<u128, BoardError<Infallible>> {
         let id = self.client.send_resp::<GetUniqueIdEndpoint>(&()).await?;
         let mut padded_id = [0u8; 16];
         padded_id[..12].copy_from_slice(&id);
