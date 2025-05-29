@@ -15,12 +15,7 @@ Below is a simple example to perform an RPC call using the bindings:
 
 ```python
 # %%
-import logging
 from rustpill_clients import ServoClient
-
-FORMAT = "%(levelname)s %(name)s %(asctime)-15s %(filename)s:%(lineno)d %(message)s"
-logging.basicConfig(format=FORMAT)
-logging.getLogger().setLevel(logging.INFO)
 # %%
 servo = ServoClient()
 # %%

@@ -1,4 +1,4 @@
-use pyo3::prelude::*;
+use pyo3::{ffi::c_str, prelude::*};
 
 mod common;
 mod servo;
@@ -9,6 +9,22 @@ use servo::ServoClient;
 /// This module hosts Python wrappers for communicating with Bluepill Rust firmware.
 #[pymodule]
 fn rustpill_clients(m: &Bound<'_, PyModule>) -> PyResult<()> {
+    Python::with_gil(|py| {
+        py.run(
+            c_str!(
+                "
+import logging
+if not logging.getLogger().hasHandlers():
+    FORMAT = \"%(levelname)s %(name)s %(message)s\"
+    logging.basicConfig(format=FORMAT)
+    logging.getLogger().setLevel(logging.DEBUG)
+"
+            ),
+            None,
+            None,
+        )
+    })?;
+
     pyo3_log::init();
 
     m.add_class::<ServoClient>()?;
