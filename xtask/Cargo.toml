@@ -5,3 +5,7 @@ edition.workspace = true
 
 [dependencies]
 dotenvy = { workspace = true }
+rust-s3 = { version = "0.35.1", default-features = false, features = [
+    "with-tokio",
+] }
+tokio = { workspace = true, features = ["macros", "time", "rt-multi-thread"] }

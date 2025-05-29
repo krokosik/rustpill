@@ -6,14 +6,15 @@ use std::{
 
 type DynError = Box<dyn std::error::Error>;
 
-fn main() {
-    if let Err(e) = try_main() {
+#[tokio::main]
+async fn main() {
+    if let Err(e) = try_main().await {
         eprintln!("{}", e);
         std::process::exit(-1);
     }
 }
 
-fn try_main() -> Result<(), DynError> {
+async fn try_main() -> Result<(), DynError> {
     dotenvy::dotenv().ok();
     let task = env::args().nth(1);
     let args = env::args().skip(2).collect::<Vec<_>>();
@@ -21,7 +22,7 @@ fn try_main() -> Result<(), DynError> {
     match (task.as_deref(), args.as_slice()) {
         (Some("flash"), [binary]) => flash(binary)?,
         (Some("pygen"), _) => build_bindings()?,
-        (Some("publish"), _) => publish()?,
+        (Some("publish"), _) => publish().await?,
         _ => print_help(),
     }
     Ok(())
@@ -79,7 +80,7 @@ fn flash(binary: &str) -> Result<(), DynError> {
     Ok(())
 }
 
-fn publish() -> Result<(), DynError> {
+async fn publish() -> Result<(), DynError> {
     copy_firmware_assets()?;
     build_stubs()?;
 
