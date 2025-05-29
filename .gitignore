@@ -18,3 +18,5 @@ target/
 
 .venv
 .env
+
+*.pyi
