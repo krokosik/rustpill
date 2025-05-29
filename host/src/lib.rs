@@ -17,7 +17,7 @@ import logging
 if not logging.getLogger().hasHandlers():
     FORMAT = \"%(levelname)s %(name)s %(message)s\"
     logging.basicConfig(format=FORMAT)
-    logging.getLogger().setLevel(logging.DEBUG)
+    logging.getLogger().setLevel(logging.INFO)
 "
             ),
             None,
