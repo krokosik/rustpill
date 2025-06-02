@@ -8,7 +8,7 @@ This is a WIP implementation/exploration of using modern Rust technologies for m
     - [Asynchronous Programming in Rust](https://rust-lang.github.io/async-book/) both firmware and host client rely on async code, some basics about how it works in Rust are also of use.
 - **Postcard RPC** a framework for efficient, type-safe communication with the MCU. Their [repo](https://github.com/jamesmunns/postcard-rpc?tab=readme-ov-file) is probably the best place to start, with a very good overview that also explains the project structure.
 - **PyO3** a library to generate Python bindings from Rust code [guide](https://pyo3.rs/).
-- **probe-rs** used for flashing firmware and debugging code running on MCU. Newer versions (last checked `0.27.0`) have some regression, which break debugging on Bluepill, so we use version `0.25.0` for now.
+- **probe-rs** used for flashing firmware and debugging code running on MCU.
 
 Other interesting resources:
 - [Workbook for Embedded Workshops](https://embedded-trainings.ferrous-systems.com/preparations)
