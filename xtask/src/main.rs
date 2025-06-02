@@ -41,23 +41,7 @@ publish                 publishes the Python bindings to PyPI
 }
 
 fn flash(binary: &str) -> Result<(), DynError> {
-    let cargo = env::var("CARGO").unwrap_or_else(|_| "cargo".to_string());
-    let mut cmd = Command::new(cargo);
-
-    let defmt_log = env::var("DEFMT_LOG").unwrap_or_else(|_| "info".to_string());
-
-    cmd.current_dir(project_root())
-        .env("DEFMT_LOG", defmt_log)
-        .arg("build")
-        .arg("-p")
-        .arg("firmware")
-        .arg("--release")
-        .arg(format!("--bin={}", binary));
-
-    let status = cmd.status()?;
-    if !status.success() {
-        return Err(format!("Failed to build: {}", status).into());
-    }
+    build_firmware(Some(binary))?;
 
     let target_bin = project_root()
         .join("target")
@@ -81,8 +65,33 @@ fn flash(binary: &str) -> Result<(), DynError> {
     Ok(())
 }
 
+fn build_firmware(firmware_name: Option<&str>) -> Result<(), DynError> {
+    let cargo = env::var("CARGO").unwrap_or_else(|_| "cargo".to_string());
+    let mut cmd = Command::new(cargo);
+
+    let defmt_log = env::var("DEFMT_LOG").unwrap_or_else(|_| "info".to_string());
+
+    cmd.current_dir(project_root())
+        .env("DEFMT_LOG", defmt_log)
+        .arg("build")
+        .arg("-p")
+        .arg("firmware")
+        .arg("--release");
+
+    if let Some(name) = firmware_name {
+        cmd.arg("--bin").arg(name);
+    }
+
+    let status = cmd.status()?;
+    if !status.success() {
+        return Err(format!("Failed to build firmware: {}", status).into());
+    }
+    Ok(())
+}
+
 fn publish() -> Result<(), DynError> {
-    copy_firmware_assets()?;
+    build_firmware(None)?;
+    upload_firmwares()?;
     build_stubs()?;
 
     let mut pycmd = pycmd();
@@ -97,7 +106,6 @@ fn publish() -> Result<(), DynError> {
 }
 
 fn build_bindings() -> Result<(), DynError> {
-    copy_firmware_assets()?;
     build_stubs()?;
 
     let mut pycmd = pycmd();
@@ -130,21 +138,8 @@ fn build_stubs() -> Result<(), DynError> {
     Ok(())
 }
 
-fn copy_firmware_assets() -> Result<(), DynError> {
-    let cargo = env::var("CARGO").unwrap_or_else(|_| "cargo".to_string());
-    let mut cmd = Command::new(cargo);
-
-    cmd.current_dir(project_root())
-        .arg("build")
-        .arg("-p")
-        .arg("firmware")
-        .arg("--release");
-    let status = cmd.status()?;
-    if !status.success() {
-        return Err(format!("Failed to build firmware: {}", status).into());
-    }
-
-    let compiled_firmare_dir = project_root()
+fn upload_firmwares() -> Result<(), DynError> {
+    let compiled_firmware_dir = project_root()
         .join("target")
         .join("thumbv7m-none-eabi")
         .join("release");
@@ -186,7 +181,7 @@ fn copy_firmware_assets() -> Result<(), DynError> {
     {
         upload_to_s3(
             bucket.clone(),
-            &compiled_firmare_dir,
+            &compiled_firmware_dir,
             &firmware_name,
             "stm32f103c8",
         )?;
@@ -201,16 +196,11 @@ fn upload_to_s3(
     firmware_name: &str,
     chip_type: &str,
 ) -> Result<(), DynError> {
-    let mut s3_key = PathBuf::new();
-    s3_key.push(chip_type);
-    s3_key.push(firmware_name);
-    s3_key.push(env!("CARGO_PKG_VERSION"));
-    s3_key.push("firmware.bin");
-    let s3_key = s3_key.to_str().ok_or("Invalid S3 key")?;
+    let s3_key = [chip_type, firmware_name, env!("CARGO_PKG_VERSION")].join("/");
 
-    let content = std::fs::read(source_dir.join(firmware_name).with_extension("bin"))?;
+    let content = std::fs::read(source_dir.join(firmware_name))?;
 
-    bucket.put_object(s3_key, &content)?;
+    bucket.put_object(&s3_key, &content)?;
     println!(
         "Uploaded {} to s3://{}/{}",
         firmware_name,
