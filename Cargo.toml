@@ -29,6 +29,7 @@ static_cell = "2.0.0"
 
 protocol = { path = "protocol" }
 macros = { path = "macros" }
+xtask = { path = "xtask" }
 
 env_logger = "0.11.8"
 log = "0.4.27"
