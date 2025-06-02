@@ -34,7 +34,7 @@ pub fn upload_to_s3(
     firmware_name: &str,
     chip_type: &str,
 ) -> Result<(), Box<dyn Error>> {
-    let s3_key = [chip_type, firmware_name, env!("CARGO_PKG_VERSION")].join("/");
+    let s3_key = [chip_type, env!("CARGO_PKG_VERSION"), firmware_name].join("/");
 
     let content = std::fs::read(source_dir.join(firmware_name))?;
 

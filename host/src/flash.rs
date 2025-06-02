@@ -1,24 +1,22 @@
 use std::env;
-use std::fs;
-use std::io::{self, Write};
-use std::path::{Path, PathBuf};
-use std::process::{Command, exit};
+use std::fs::File;
+use std::io::{BufRead, BufReader, Write};
+use std::process::{Command, Stdio, exit};
 
 use pyo3::prelude::*;
 use pyo3_stub_gen_derive::gen_stub_pyfunction;
+use s3_utils::get_bucket;
 
 const PROBE_RS_VERSION: &str = "0.28.0";
 
-/// Checks if "probe-rs" is available in PATH. If not, prompts the user and
-/// attempts installation.
 #[gen_stub_pyfunction]
 #[pyfunction]
 pub fn check_probe_rs() {
-    if which("probe-rs").is_some() {
-        println!("Probe-rs is installed.");
+    if Command::new("probe-rs").arg("--version").status().is_ok() {
+        log::info!("Probe-rs is installed.");
         return;
     } else {
-        println!("Probe-rs is not installed.");
+        log::info!("Probe-rs is not installed.");
         let status = if cfg!(target_os = "windows") {
             let script = format!(
                 "irm https://github.com/probe-rs/probe-rs/releases/download/v{version}/probe-rs-tools-installer.ps1 | iex",
@@ -35,126 +33,109 @@ pub fn check_probe_rs() {
             );
             Command::new("sh").arg("-c").arg(&cmd).status()
         } else {
-            println!("Installation not supported on this platform.");
+            log::info!("Installation not supported on this platform.");
             exit(1);
         };
 
         match status {
             Ok(s) if s.success() => {
-                if which("probe-rs").is_some() {
-                    println!("Probe-rs installed successfully.");
+                if Command::new("probe-rs").arg("--version").status().is_ok() {
+                    log::info!("Probe-rs installed successfully.");
                     return;
                 } else {
-                    println!("Probe-rs installation did not complete correctly.");
+                    log::info!("Probe-rs installation did not complete correctly.");
                     exit(1);
                 }
             }
             Ok(s) => {
-                println!("Installation failed with exit code: {}", s);
+                log::info!("Installation failed with exit code: {}", s);
                 exit(1);
             }
             Err(e) => {
-                println!("Installation failed: {}", e);
+                log::info!("Installation failed: {}", e);
                 exit(1);
             }
         }
     }
 }
 
-/// Lists the binaries available in the "assets" directory relative to this source file.
 #[gen_stub_pyfunction]
 #[pyfunction]
-pub fn list_binaries() {
-    // Determine the base directory. Assuming the assets folder is located in the same
-    // directory as this source file.
-    let base_dir = get_assets_dir();
-    println!("Available binaries:");
-    match fs::read_dir(&base_dir) {
-        Ok(entries) => {
-            for entry in entries.flatten() {
-                if let Some(file_name) = entry.file_name().to_str() {
-                    println!("- {}", file_name);
-                }
-            }
-        }
-        Err(e) => {
-            println!("Failed to read assets directory: {}", e);
-            exit(1);
-        }
-    }
-}
-
-/// Flashes the specified binary by calling "cargo-flash" tool on the given binary.
-#[gen_stub_pyfunction]
-#[pyfunction]
-pub fn flash_binary(binary_name: &str) {
+pub fn flash_binary(binary_name: &str) -> PyResult<()> {
     check_probe_rs();
 
-    let base_dir = get_assets_dir();
-    let binary_path = base_dir.join(binary_name);
+    let bucket = get_bucket().map_err(|e| {
+        PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("Failed to get S3 bucket: {}", e))
+    })?;
 
-    println!("Starting flash of binary: {}", binary_path.display());
+    let mut file = File::create(binary_name)?;
 
-    let status = Command::new("cargo-flash")
-        .args(&["--chip", "STM32F103C8", "--path"])
-        .arg(binary_path)
-        .status();
+    let mut binary = bucket
+        .get_object(["stm32f103c8", env!("CARGO_PKG_VERSION"), binary_name].join("/"))
+        .map_err(|e| {
+            PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!(
+                "Failed to get object from S3: {}",
+                e
+            ))
+        })?;
 
-    match status {
-        Ok(s) if s.success() => {
-            println!("Flashing completed successfully.");
-        }
-        Ok(s) => {
-            println!("Flashing failed with exit code: {}", s);
-            exit(1);
-        }
-        Err(e) => {
-            println!("Flashing failed: {}", e);
-            exit(1);
-        }
-    }
-}
+    file.write_all(binary.bytes_mut())?;
+    file.flush()?;
+    log::info!("Flashing binary: {}", binary_name);
 
-/// Helper function to locate the assets directory.
-/// Assumes that the assets directory is in the same folder as this source file.
-fn get_assets_dir() -> PathBuf {
-    // The env!("CARGO_MANIFEST_DIR") returns the directory containing Cargo.toml.
-    // Adjust the relative path as necessary. Here we assume assets is in "host/src/assets".
-    let manifest_dir = env!("CARGO_MANIFEST_DIR");
-    Path::new(manifest_dir)
-        .join("host")
-        .join("src")
-        .join("assets")
-}
+    let mut cmd = Command::new("probe-rs");
+    cmd.arg("download")
+        .arg("--chip=STM32F103C8")
+        .arg("--non-interactive")
+        .arg("--disable-progressbars")
+        .arg("--protocol")
+        .arg("swd")
+        .arg(binary_name)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
 
-/// Simple implementation of the Unix 'which' command.
-/// Returns Some(path) if the binary is found in PATH.
-fn which(cmd: &str) -> Option<PathBuf> {
-    if cmd.contains(std::path::MAIN_SEPARATOR) {
-        let path = Path::new(cmd);
-        if path.is_file() {
-            return Some(path.to_path_buf());
-        }
-        return None;
-    }
-    if let Ok(paths) = env::var("PATH") {
-        for path in env::split_paths(&paths) {
-            let full_path = path.join(cmd);
-            if full_path.is_file() {
-                return Some(full_path);
-            }
-            // On Windows, executables might have extensions like .exe, .bat, etc.
-            #[cfg(windows)]
-            {
-                let exts = env::var("PATHEXT").unwrap_or_default();
-                for ext in exts.split(';') {
-                    let full_path_ext = full_path.with_extension(ext.trim_start_matches('.'));
-                    if full_path_ext.is_file() {
-                        return Some(full_path_ext);
-                    }
-                }
+    let mut child = cmd.spawn().map_err(|e| {
+        PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!(
+            "Failed to spawn probe-rs: {}",
+            e
+        ))
+    })?;
+
+    // Capture and log stdout
+    if let Some(stdout) = child.stdout.take() {
+        let reader = BufReader::new(stdout);
+        for line in reader.lines() {
+            match line {
+                Ok(line) => log::info!("probe-rs: {}", line),
+                Err(e) => log::warn!("Error reading stdout: {}", e),
             }
         }
     }
-    None
+
+    // Capture and log stderr
+    if let Some(stderr) = child.stderr.take() {
+        let reader = BufReader::new(stderr);
+        for line in reader.lines() {
+            match line {
+                Ok(line) => log::info!("probe-rs error: {}", line),
+                Err(e) => log::warn!("Error reading stderr: {}", e),
+            }
+        }
+    }
+
+    let status = child.wait().map_err(|e| {
+        PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!(
+            "Failed to wait for probe-rs: {}",
+            e
+        ))
+    })?;
+
+    if !status.success() {
+        return Err(PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!(
+            "Failed to flash binary: {}",
+            status
+        )));
+    }
+
+    Ok(())
 }

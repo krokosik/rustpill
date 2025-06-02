@@ -10,6 +10,8 @@ use servo::ServoClient;
 /// This module hosts Python wrappers for communicating with Bluepill Rust firmware.
 #[pymodule]
 fn rustpill_clients(m: &Bound<'_, PyModule>) -> PyResult<()> {
+    dotenvy::dotenv().ok();
+
     Python::with_gil(|py| {
         py.run(
             c_str!(
@@ -29,7 +31,6 @@ if not logging.getLogger().hasHandlers():
     pyo3_log::init();
 
     m.add_function(wrap_pyfunction!(flash::check_probe_rs, m)?)?;
-    m.add_function(wrap_pyfunction!(flash::list_binaries, m)?)?;
     m.add_function(wrap_pyfunction!(flash::flash_binary, m)?)?;
     m.add_class::<ServoClient>()?;
     Ok(())

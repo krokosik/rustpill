@@ -1245,6 +1245,7 @@ dependencies = [
 name = "host"
 version = "0.1.3"
 dependencies = [
+ "dotenvy",
  "env_logger",
  "log",
  "macros",
