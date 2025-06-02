@@ -61,7 +61,7 @@ pub async fn connect_to_board(
     log::info!("Created log subscription");
 
     // Spawn a background task to handle log messages
-    if let Err(e) = tokio::task::spawn(async move {
+    core::mem::drop(tokio::task::spawn(async move {
         log::info!("Starting log subscription");
         loop {
             match logsub.recv().await {
@@ -74,11 +74,7 @@ pub async fn connect_to_board(
                 }
             }
         }
-    })
-    .await
-    {
-        log::error!("Failed to spawn log subscription task: {:?}", e);
-    }
+    }));
 
     log::info!("Initialized board client");
 

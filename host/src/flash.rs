@@ -1,7 +1,8 @@
-use std::env;
 use std::fs::File;
 use std::io::{BufRead, BufReader, Write};
 use std::process::{Command, Stdio, exit};
+use std::thread::sleep;
+use std::{env, time};
 
 use pyo3::prelude::*;
 use pyo3_stub_gen_derive::gen_stub_pyfunction;
@@ -136,6 +137,26 @@ pub fn flash_binary(binary_name: &str) -> PyResult<()> {
             status
         )));
     }
+
+    sleep(time::Duration::from_secs(1));
+
+    log::info!("Resetting board after flashing...");
+
+    Command::new("probe-rs")
+        .arg("reset")
+        .arg("--chip=STM32F103C8")
+        .arg("--non-interactive")
+        .arg("--protocol")
+        .arg("swd")
+        .status()
+        .map_err(|e| {
+            PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!(
+                "Failed to reset board: {}",
+                e
+            ))
+        })?;
+
+    sleep(time::Duration::from_secs(2));
 
     Ok(())
 }

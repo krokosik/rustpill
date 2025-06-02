@@ -1,6 +1,7 @@
 # %%
 from rustpill_clients import ServoClient
 
+# ServoClient.flash()
 servo = ServoClient()
 # %%
 if False:  # big servo
