@@ -125,11 +125,7 @@ fn build_stubs() -> Result<(), DynError> {
 
     cmd.current_dir(project_root());
 
-    cmd.arg("run")
-        .arg("-p")
-        .arg("host")
-        .arg("--release")
-        .arg("--bin=stub_gen");
+    cmd.arg("run").arg("-p").arg("host").arg("--bin=stub_gen");
 
     let status = cmd.status()?;
     if !status.success() {
