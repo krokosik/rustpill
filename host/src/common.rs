@@ -54,12 +54,14 @@ pub async fn connect_to_board(
         VarSeqKind::Seq2,
     );
 
-    log::info!("Connected to servo board with");
+    log::info!("Connected to servo board");
 
     let mut logsub = client.subscribe_multi::<LoggingTopic>(64).await.unwrap();
 
+    log::info!("Created log subscription");
+
     // Spawn a background task to handle log messages
-    tokio::task::spawn(async move {
+    core::mem::drop(tokio::task::spawn(async move {
         log::info!("Starting log subscription");
         loop {
             match logsub.recv().await {
@@ -72,7 +74,7 @@ pub async fn connect_to_board(
                 }
             }
         }
-    });
+    }));
 
     log::info!("Initialized board client");
 

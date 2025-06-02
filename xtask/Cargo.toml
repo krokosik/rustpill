@@ -3,5 +3,13 @@ name = "xtask"
 version.workspace = true
 edition.workspace = true
 
+[lib]
+name = "s3_utils"
+path = "src/s3.rs"
+
 [dependencies]
 dotenvy = { workspace = true }
+rust-s3 = { version = "0.35.1", default-features = false, features = [
+    "sync",
+    "sync-native-tls",
+] }

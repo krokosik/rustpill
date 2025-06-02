@@ -4,6 +4,8 @@ use std::{
     process::Command,
 };
 
+use s3_utils::{get_bucket, upload_to_s3};
+
 type DynError = Box<dyn std::error::Error>;
 
 fn main() {
@@ -39,23 +41,7 @@ publish                 publishes the Python bindings to PyPI
 }
 
 fn flash(binary: &str) -> Result<(), DynError> {
-    let cargo = env::var("CARGO").unwrap_or_else(|_| "cargo".to_string());
-    let mut cmd = Command::new(cargo);
-
-    let defmt_log = env::var("DEFMT_LOG").unwrap_or_else(|_| "info".to_string());
-
-    cmd.current_dir(project_root())
-        .env("DEFMT_LOG", defmt_log)
-        .arg("build")
-        .arg("-p")
-        .arg("firmware")
-        .arg("--release")
-        .arg(format!("--bin={}", binary));
-
-    let status = cmd.status()?;
-    if !status.success() {
-        return Err(format!("Failed to build: {}", status).into());
-    }
+    build_firmware(Some(binary))?;
 
     let target_bin = project_root()
         .join("target")
@@ -79,14 +65,40 @@ fn flash(binary: &str) -> Result<(), DynError> {
     Ok(())
 }
 
-fn publish() -> Result<(), DynError> {
-    build_stubs()?;
+fn build_firmware(firmware_name: Option<&str>) -> Result<(), DynError> {
+    let cargo = env::var("CARGO").unwrap_or_else(|_| "cargo".to_string());
+    let mut cmd = Command::new(cargo);
 
-    let mut cmd = pycmd();
+    let defmt_log = env::var("DEFMT_LOG").unwrap_or_else(|_| "info".to_string());
 
-    cmd.arg("maturin").arg("publish").arg("--no-sdist");
+    cmd.current_dir(project_root())
+        .env("DEFMT_LOG", defmt_log)
+        .arg("build")
+        .arg("-p")
+        .arg("firmware")
+        .arg("--release");
+
+    if let Some(name) = firmware_name {
+        cmd.arg("--bin").arg(name);
+    }
 
     let status = cmd.status()?;
+    if !status.success() {
+        return Err(format!("Failed to build firmware: {}", status).into());
+    }
+    Ok(())
+}
+
+fn publish() -> Result<(), DynError> {
+    build_firmware(None)?;
+    upload_firmwares()?;
+    build_stubs()?;
+
+    let mut pycmd = pycmd();
+
+    pycmd.arg("maturin").arg("publish").arg("--no-sdist");
+
+    let status = pycmd.status()?;
     if !status.success() {
         return Err(format!("Failed to build bindings: {}", status).into());
     }
@@ -96,11 +108,11 @@ fn publish() -> Result<(), DynError> {
 fn build_bindings() -> Result<(), DynError> {
     build_stubs()?;
 
-    let mut cmd = pycmd();
+    let mut pycmd = pycmd();
 
-    cmd.arg("maturin").arg("develop");
+    pycmd.arg("maturin").arg("develop");
 
-    let status = cmd.status()?;
+    let status = pycmd.status()?;
     if !status.success() {
         return Err(format!("Failed to build bindings: {}", status).into());
     }
@@ -113,11 +125,7 @@ fn build_stubs() -> Result<(), DynError> {
 
     cmd.current_dir(project_root());
 
-    cmd.arg("run")
-        .arg("-p")
-        .arg("host")
-        .arg("--release")
-        .arg("--bin=stub_gen");
+    cmd.arg("run").arg("-p").arg("host").arg("--bin=stub_gen");
 
     let status = cmd.status()?;
     if !status.success() {
@@ -126,14 +134,45 @@ fn build_stubs() -> Result<(), DynError> {
     Ok(())
 }
 
-fn pycmd() -> Command {
+fn upload_firmwares() -> Result<(), DynError> {
+    let compiled_firmware_dir = project_root()
+        .join("target")
+        .join("thumbv7m-none-eabi")
+        .join("release");
+
+    let firmware_bin_dir = project_root().join("firmware").join("src").join("bin");
+
+    let bucket = get_bucket()?;
+
+    for firmware_name in std::fs::read_dir(&firmware_bin_dir)?
+        .filter_map(Result::ok)
+        .map(|e| {
+            e.path()
+                .file_stem()
+                .and_then(|s| s.to_str())
+                .map(String::from)
+        })
+        .flatten()
+    {
+        upload_to_s3(
+            bucket.clone(),
+            &compiled_firmware_dir,
+            &firmware_name,
+            "stm32f103c8",
+        )?;
+    }
+
+    Ok(())
+}
+
+pub fn pycmd() -> Command {
     let mut cmd = Command::new("uv");
     cmd.current_dir(project_root().join("host"));
     cmd.arg("run");
     cmd
 }
 
-fn project_root() -> PathBuf {
+pub fn project_root() -> PathBuf {
     Path::new(&env!("CARGO_MANIFEST_DIR"))
         .ancestors()
         .nth(1)

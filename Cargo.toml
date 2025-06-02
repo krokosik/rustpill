@@ -29,6 +29,7 @@ static_cell = "2.0.0"
 
 protocol = { path = "protocol" }
 macros = { path = "macros" }
+xtask = { path = "xtask" }
 
 env_logger = "0.11.8"
 log = "0.4.27"
@@ -48,9 +49,6 @@ proc-macro2 = "1.0"
 [workspace]
 resolver = "2"
 members = ["firmware", "host", "protocol", "xtask", "macros"]
-
-[profile.dev]
-lto = "fat"
 
 [profile.dev.package.firmware]
 opt-level = "s"

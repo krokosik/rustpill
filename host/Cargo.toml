@@ -22,6 +22,7 @@ postcard-schema = { workspace = true, features = ["derive"] }
 
 protocol = { workspace = true, features = ["use-std"] }
 macros = { workspace = true }
+xtask = { workspace = true }
 
 pyo3 = { workspace = true, features = [
     "extension-module",

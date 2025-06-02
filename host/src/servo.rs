@@ -5,7 +5,10 @@ use pyo3::prelude::*;
 use pyo3_stub_gen::derive::*;
 use std::convert::Infallible;
 
-use crate::common::{BoardError, connect_to_board};
+use crate::{
+    common::{BoardError, connect_to_board},
+    flash::flash_binary,
+};
 
 const STM32_PWM_RESOLUTION_BITS: u8 = 16;
 
@@ -33,6 +36,14 @@ impl ServoClient {
         log::info!("Servo config: {:?}", config);
 
         Ok(Self { client, config })
+    }
+
+    #[staticmethod]
+    /// Flash the servo firmware to the board.
+    /// This function will use the `probe-rs` tool to flash the firmware binary to the board.
+    fn flash() -> PyResult<()> {
+        flash_binary("servo")?;
+        Ok(())
     }
 
     /// Close the connection to the board.

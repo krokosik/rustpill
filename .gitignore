@@ -20,3 +20,7 @@ target/
 .env
 
 *.pyi
+
+host/src/assets
+*.pyd
+__pycache__

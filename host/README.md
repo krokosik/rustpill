@@ -17,6 +17,7 @@ Below is a simple example to perform an RPC call using the bindings:
 # %%
 from rustpill_clients import ServoClient
 # %%
+# ServoClient.flash() # Uncomment this to flash the board from Python (ST-LINK required)
 servo = ServoClient()
 # %% Default config for each channel is 500us and 2500us at 50Hz, typical for 9g servo
 # servo.configure_channel(
