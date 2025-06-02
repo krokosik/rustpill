@@ -4,17 +4,18 @@ use std::{
     process::Command,
 };
 
+const MINIO_BUCKET: &str = "rustpill-firmwares";
+
 type DynError = Box<dyn std::error::Error>;
 
-#[tokio::main]
-async fn main() {
-    if let Err(e) = try_main().await {
+fn main() {
+    if let Err(e) = try_main() {
         eprintln!("{}", e);
         std::process::exit(-1);
     }
 }
 
-async fn try_main() -> Result<(), DynError> {
+fn try_main() -> Result<(), DynError> {
     dotenvy::dotenv().ok();
     let task = env::args().nth(1);
     let args = env::args().skip(2).collect::<Vec<_>>();
@@ -22,7 +23,7 @@ async fn try_main() -> Result<(), DynError> {
     match (task.as_deref(), args.as_slice()) {
         (Some("flash"), [binary]) => flash(binary)?,
         (Some("pygen"), _) => build_bindings()?,
-        (Some("publish"), _) => publish().await?,
+        (Some("publish"), _) => publish()?,
         _ => print_help(),
     }
     Ok(())
@@ -80,7 +81,7 @@ fn flash(binary: &str) -> Result<(), DynError> {
     Ok(())
 }
 
-async fn publish() -> Result<(), DynError> {
+fn publish() -> Result<(), DynError> {
     copy_firmware_assets()?;
     build_stubs()?;
 
@@ -148,15 +149,32 @@ fn copy_firmware_assets() -> Result<(), DynError> {
         .join("thumbv7m-none-eabi")
         .join("release");
 
-    let assets_dir = project_root().join("host").join("src").join("assets");
-
-    if !assets_dir.exists() {
-        std::fs::create_dir_all(&assets_dir)?;
-    }
-
     let firmware_bin_dir = project_root().join("firmware").join("src").join("bin");
 
-    std::fs::read_dir(&firmware_bin_dir)?
+    let minio_endpoint = env::var("MINIO_ENDPOINT").expect("MINIO_ENDPOINT not set in .env");
+    let access_key_id =
+        env::var("MINIO_ACCESS_KEY_ID").expect("MINIO_ACCESS_KEY_ID not set in .env");
+    let secret_access_key =
+        env::var("MINIO_SECRET_ACCESS_KEY").expect("MINIO_SECRET_ACCESS_KEY not set in .env");
+
+    let region = s3::Region::Custom {
+        region: "eu-central-1".to_string(),
+        endpoint: minio_endpoint,
+    };
+    let creds = s3::creds::Credentials::new(
+        Some(&access_key_id),
+        Some(&secret_access_key),
+        None,
+        None,
+        None,
+    )?;
+    let mut bucket = s3::Bucket::new(MINIO_BUCKET, region, creds)?;
+    bucket.set_path_style();
+    if !bucket.exists()? {
+        return Err(format!("Bucket {} does not exist", MINIO_BUCKET).into());
+    }
+
+    for firmware_name in std::fs::read_dir(&firmware_bin_dir)?
         .filter_map(Result::ok)
         .map(|e| {
             e.path()
@@ -165,13 +183,40 @@ fn copy_firmware_assets() -> Result<(), DynError> {
                 .map(String::from)
         })
         .flatten()
-        .for_each(|firmware| {
-            std::fs::copy(
-                compiled_firmare_dir.join(&firmware),
-                assets_dir.join(&firmware),
-            )
-            .expect("Failed to copy firmware binary");
-        });
+    {
+        upload_to_s3(
+            bucket.clone(),
+            &compiled_firmare_dir,
+            &firmware_name,
+            "stm32f103c8",
+        )?;
+    }
+
+    Ok(())
+}
+
+fn upload_to_s3(
+    bucket: Box<s3::Bucket>,
+    source_dir: &Path,
+    firmware_name: &str,
+    chip_type: &str,
+) -> Result<(), DynError> {
+    let mut s3_key = PathBuf::new();
+    s3_key.push(chip_type);
+    s3_key.push(firmware_name);
+    s3_key.push(env!("CARGO_PKG_VERSION"));
+    s3_key.push("firmware.bin");
+    let s3_key = s3_key.to_str().ok_or("Invalid S3 key")?;
+
+    let content = std::fs::read(source_dir.join(firmware_name).with_extension("bin"))?;
+
+    bucket.put_object(s3_key, &content)?;
+    println!(
+        "Uploaded {} to s3://{}/{}",
+        firmware_name,
+        bucket.name(),
+        s3_key
+    );
 
     Ok(())
 }
