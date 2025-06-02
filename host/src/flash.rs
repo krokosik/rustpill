@@ -65,23 +65,32 @@ pub fn check_probe_rs() {
 pub fn flash_binary(binary_name: &str) -> PyResult<()> {
     check_probe_rs();
 
-    let bucket = get_bucket().map_err(|e| {
-        PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("Failed to get S3 bucket: {}", e))
-    })?;
+    let binary_path = env::temp_dir().join(binary_name);
 
-    let mut file = File::create(binary_name)?;
+    if !binary_path.exists() {
+        log::info!("Downloading binary: {:?}", binary_name);
 
-    let mut binary = bucket
-        .get_object(["stm32f103c8", env!("CARGO_PKG_VERSION"), binary_name].join("/"))
-        .map_err(|e| {
+        let bucket = get_bucket().map_err(|e| {
             PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!(
-                "Failed to get object from S3: {}",
+                "Failed to get S3 bucket: {}",
                 e
             ))
         })?;
 
-    file.write_all(binary.bytes_mut())?;
-    file.flush()?;
+        let mut file = File::create(&binary_path)?;
+
+        let mut binary = bucket
+            .get_object(["stm32f103c8", env!("CARGO_PKG_VERSION"), binary_name].join("/"))
+            .map_err(|e| {
+                PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!(
+                    "Failed to get object from S3: {}",
+                    e
+                ))
+            })?;
+
+        file.write_all(binary.bytes_mut())?;
+        file.flush()?;
+    }
     log::info!("Flashing binary: {}", binary_name);
 
     let mut cmd = Command::new("probe-rs");
@@ -91,7 +100,7 @@ pub fn flash_binary(binary_name: &str) -> PyResult<()> {
         .arg("--disable-progressbars")
         .arg("--protocol")
         .arg("swd")
-        .arg(binary_name)
+        .arg(&binary_path)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
 
