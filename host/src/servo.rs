@@ -39,6 +39,8 @@ impl ServoClient {
     }
 
     #[staticmethod]
+    /// Flash the servo firmware to the board.
+    /// This function will use the `probe-rs` tool to flash the firmware binary to the board.
     fn flash() -> PyResult<()> {
         flash_binary("servo")?;
         Ok(())
