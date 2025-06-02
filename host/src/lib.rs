@@ -10,8 +10,6 @@ use servo::ServoClient;
 /// This module hosts Python wrappers for communicating with Bluepill Rust firmware.
 #[pymodule]
 fn rustpill_clients(m: &Bound<'_, PyModule>) -> PyResult<()> {
-    dotenvy::dotenv().ok();
-
     Python::with_gil(|py| {
         py.run(
             c_str!(

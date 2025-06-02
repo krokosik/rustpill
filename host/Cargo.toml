@@ -15,7 +15,6 @@ name = "stub_gen"
 doc = false
 
 [dependencies]
-dotenvy = { workspace = true }
 env_logger = { workspace = true }
 log = { workspace = true }
 postcard-rpc = { workspace = true, features = ["use-std", "raw-nusb"] }
