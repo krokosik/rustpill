@@ -1,14 +1,11 @@
-use std::fs::File;
-use std::io::{BufRead, BufReader, Write};
-use std::path::{Path, PathBuf};
+use std::io::{BufRead, BufReader};
+use std::path::PathBuf;
 use std::process::{Command, Stdio, exit};
 use std::thread::sleep;
 use std::{env, time};
 
-use anyhow::anyhow;
 use pyo3::prelude::*;
 use pyo3_stub_gen_derive::gen_stub_pyfunction;
-use s3_utils::get_bucket;
 
 const PROBE_RS_VERSION: &str = "0.28.0";
 
@@ -61,32 +58,52 @@ pub fn check_probe_rs() {
 }
 
 pub fn get_binary(binary_name: &str) -> anyhow::Result<PathBuf> {
-    let binary_path = env::temp_dir()
-        .join(env!("CARGO_PKG_VERSION"))
-        .join(binary_name);
+    #[cfg(not(debug_assertions))]
+    {
+        use s3_utils::get_bucket;
+        use std::fs::File;
+        use std::io::Write;
 
-    if !binary_path.exists() {
-        log::info!("Downloading binary: {:?}", binary_name);
+        let binary_path = env::temp_dir()
+            .join(env!("CARGO_PKG_VERSION"))
+            .join(binary_name);
 
-        let bucket = get_bucket()?;
+        if !binary_path.exists() {
+            log::info!("Downloading binary: {:?}", binary_name);
 
-        std::fs::create_dir_all(binary_path.parent().unwrap()).map_err(|e| {
-            PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!(
-                "Failed to create directory for binary: {}",
-                e
-            ))
-        })?;
+            let bucket = get_bucket()?;
 
-        let mut file = File::create(&binary_path)?;
+            std::fs::create_dir_all(binary_path.parent()?)?;
 
-        let mut binary =
-            bucket.get_object(["stm32f103c8", env!("CARGO_PKG_VERSION"), binary_name].join("/"))?;
+            let mut file = File::create(&binary_path)?;
 
-        file.write_all(binary.bytes_mut())?;
-        file.flush()?;
+            let mut binary = bucket
+                .get_object(["stm32f103c8", env!("CARGO_PKG_VERSION"), binary_name].join("/"))?;
+
+            file.write_all(binary.bytes_mut())?;
+            file.flush()?;
+        }
+
+        Ok(binary_path)
     }
 
-    Ok(binary_path)
+    #[cfg(debug_assertions)]
+    {
+        let workspace_dir = env!("CARGO_MANIFEST_DIR");
+        let binary_path = PathBuf::from(workspace_dir)
+            .join("target")
+            .join("thumbv7m-none-eabi")
+            .join("release")
+            .join(binary_name);
+
+        if !binary_path.exists() {
+            return Err(anyhow::anyhow!(
+                "Binary {} does not exist. Please build the project first.",
+                binary_name
+            ));
+        }
+        Ok(binary_path)
+    }
 }
 
 #[gen_stub_pyfunction]
@@ -94,7 +111,12 @@ pub fn get_binary(binary_name: &str) -> anyhow::Result<PathBuf> {
 pub fn flash_binary(binary_name: &str) -> PyResult<()> {
     check_probe_rs();
 
-    let binary_path = get_binary(binary_name)?;
+    let binary_path = get_binary(binary_name).map_err(|e| {
+        PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!(
+            "Failed to get binary {}: {}",
+            binary_name, e
+        ))
+    })?;
     log::info!("Flashing binary: {}", binary_name);
 
     let mut cmd = Command::new("probe-rs");
