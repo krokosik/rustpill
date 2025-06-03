@@ -53,3 +53,8 @@ members = ["firmware", "host", "protocol", "xtask", "macros"]
 [profile.release]
 lto = "fat"
 debug = 2
+
+[profile.release.package.firmware]
+opt-level = "s"
+incremental = false
+codegen-units = 1
