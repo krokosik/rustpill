@@ -18,8 +18,8 @@ endpoints! {
     | ConfigureChannel          | (PwmChannel, ServoChannelConfig)     | ()                    | "servo/channel"   |
     | GetServoConfig            | ()                                   | ServoConfig           | "servo/config"    |
     | SetFrequencyEndpoint      | u32                                  | ()                    | "servo/frequency" |
-    | StartDefmtLoggingEndpoint | ()                                   | ()                    | "defmt/start"   |
-    | StopDefmtLoggingEndpoint  | ()                                   | ()                    | "defmt/stop" |
+    | StartDefmtLoggingEndpoint | ()                                   | ()                    | "defmt/start"     |
+    | StopDefmtLoggingEndpoint  | ()                                   | bool                  | "defmt/stop"      |
 }
 
 topics! {

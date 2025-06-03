@@ -50,6 +50,6 @@ proc-macro2 = "1.0"
 resolver = "2"
 members = ["firmware", "host", "protocol", "xtask", "macros"]
 
-### Uncomment below to decrease release binary size
 [profile.release]
 lto = "fat"
+debug = 2

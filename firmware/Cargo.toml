@@ -50,3 +50,4 @@ heapless = { workspace = true }
 nb = { workspace = true }
 static_cell = { workspace = true }
 defmt-brtt = { version = "0.1.1", features = ["async-await"] }
+portable-atomic = { version = "1.11.0", features = ["critical-section"] }
