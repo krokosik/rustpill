@@ -65,25 +65,24 @@ pub async fn connect_to_board(
         .subscribe_multi::<protocol::DefmtLoggingTopic>(64)
         .await?;
 
+    let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<Vec<u8>>();
+
+    core::mem::drop(tokio::task::spawn(async move {
+        let binary_path = get_binary("servo").unwrap();
+        run_decoder(&binary_path, rx).await
+    }));
+
     log::info!("Created log subscription");
 
     // Spawn a background task to handle log messages
-    core::mem::drop(tokio::task::spawn_local(async move {
+    core::mem::drop(tokio::task::spawn(async move {
         log::info!("Starting log subscription");
-        let binary_path = get_binary("servo").unwrap();
-        run_decoder(binary_path, async move |buf: &mut [u8]| {
-            match logsub.recv().await {
-                Ok((n, data)) => {
-                    let n = n as usize;
-                    buf.copy_from_slice(&data[..n]);
-                    Ok((n, n == 0))
-                }
-                Err(e) => {
-                    log::error!("Error reading from log subscription: {:?}", e);
-                    Err(anyhow!("Failed to read from log subscription"))
-                }
+        while let Ok((n, buf)) = logsub.recv().await {
+            if tx.send(buf[..n as usize].to_vec()).is_err() {
+                log::error!("Failed to send data to decoder");
+                break;
             }
-        })
+        }
     }));
 
     log::info!("Initialized board client");
