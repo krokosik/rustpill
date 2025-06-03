@@ -12,10 +12,10 @@ use tokio::fs;
 
 const READ_BUFFER_SIZE: usize = 1024;
 
-async fn run_decoder<P, F>(bin_path: P, read_fn: F) -> anyhow::Result<()>
+pub async fn run_decoder<P, F>(bin_path: P, mut read_fn: F) -> anyhow::Result<()>
 where
     P: AsRef<Path>,
-    F: AsyncFn(&mut [u8]) -> anyhow::Result<(usize, bool)>,
+    F: AsyncFnMut(&mut [u8]) -> anyhow::Result<(usize, bool)>,
 {
     let bytes = fs::read(bin_path).await?;
     let table = Table::parse(&bytes)?.ok_or_else(|| anyhow!(".defmt data not found"))?;
