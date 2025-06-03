@@ -9,7 +9,7 @@ endpoints! {
     | ----------                | ---------                            | ----------            | ----              |
     | GetUniqueIdEndpoint       | ()                                   | [u8; 24]              | "unique_id/get"   |
     | StartDefmtLoggingEndpoint | ()                                   | ()                    | "defmt/start"     |
-    | StopDefmtLoggingEndpoint  | ()                                   | ()                    | "defmt/stop"      |
+    | StopDefmtLoggingEndpoint  | ()                                   | bool                  | "defmt/stop"      |
 }
 
 topics! {

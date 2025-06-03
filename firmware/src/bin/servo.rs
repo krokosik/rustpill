@@ -1,7 +1,7 @@
 #![no_std]
 #![no_main]
 
-use defmt_brtt as _;
+use defmt_brtt::{self as _, DefmtConsumer};
 use embassy_executor::Spawner;
 use embassy_stm32::{
     Config, bind_interrupts,
@@ -14,22 +14,44 @@ use embassy_stm32::{
     },
     usb,
 };
+use embassy_sync::blocking_mutex::raw::ThreadModeRawMutex;
+use embassy_sync::mutex::Mutex;
+use embassy_time::Timer;
+use panic_probe as _;
+use panic_probe as _;
+use portable_atomic::{AtomicBool, Ordering};
 use postcard_rpc::{
     define_dispatch,
     header::VarHeader,
     server::{
-        Dispatch, Sender, Server,
-        impls::embassy_usb_v0_4::dispatch_impl::{WireRxBuf, WireSpawnImpl},
+        Dispatch, Sender, Server, SpawnContext,
+        impls::embassy_usb_v0_4::dispatch_impl::{WireRxBuf, WireSpawnImpl, spawn_fn},
     },
 };
 use protocol::{servo::*, utils::PwmChannel};
-use {defmt_rtt as _, panic_probe as _};
 
 use firmware::*;
+use static_cell::StaticCell;
+
+static BBQ: StaticCell<Mutex<ThreadModeRawMutex, DefmtConsumer>> = StaticCell::new();
 
 struct Context {
     pwm: SimplePwm<'static, peripherals::TIM4>, // Possibly expand to more timers in the future
     config: ServoConfig,
+    consumer: &'static Mutex<ThreadModeRawMutex, DefmtConsumer>,
+}
+
+struct SpawnCtx {
+    consumer: &'static Mutex<ThreadModeRawMutex, DefmtConsumer>,
+}
+
+impl SpawnContext for Context {
+    type SpawnCtxt = SpawnCtx;
+    fn spawn_ctxt(&mut self) -> Self::SpawnCtxt {
+        SpawnCtx {
+            consumer: self.consumer,
+        }
+    }
 }
 
 type AppServer = Server<AppTx, AppRx, WireRxBuf, App>;
@@ -59,6 +81,8 @@ define_dispatch! {
         | ConfigureChannel          | blocking  | configure_channel_handler     |
         | GetServoConfig            | blocking  | get_servo_config_handler      |
         | SetFrequencyEndpoint      | blocking  | set_frequency_handler         |
+        | StartDefmtLoggingEndpoint | spawn     | defmt_handler_start_logging   |
+        | StopDefmtLoggingEndpoint  | blocking  | defmt_handler_stop_logging    |
     };
     topics_in: {
         list: TOPICS_IN_LIST;
@@ -74,6 +98,7 @@ define_dispatch! {
 #[embassy_executor::main]
 async fn main(spawner: Spawner) {
     let consumer = defmt_brtt::init().unwrap();
+    let consumer_ref = BBQ.init(Mutex::new(consumer));
 
     let mut config = Config::default();
     enable_usb_clock(&mut config);
@@ -110,6 +135,7 @@ async fn main(spawner: Spawner) {
     let context = Context {
         config: servo_config,
         pwm,
+        consumer: consumer_ref,
     };
 
     /********************************** USB **********************************/
@@ -133,41 +159,79 @@ async fn main(spawner: Spawner) {
         vkk,
     );
 
-    let sender = server.sender();
-
     spawner.must_spawn(usb_task(device));
     spawner.must_spawn(server_task(server));
     spawner.must_spawn(idle_task());
-    spawner.must_spawn(logging_task(sender, consumer));
 }
 
+static STOP: AtomicBool = AtomicBool::new(false);
+
 #[embassy_executor::task]
-async fn logging_task(sender: Sender<AppTx>, mut consumer: defmt_brtt::DefmtConsumer) {
-    let mut cnt = 0u32;
+async fn defmt_handler_start_logging(
+    context: SpawnCtx,
+    header: VarHeader,
+    _rqst: (),
+    sender: Sender<AppTx>,
+) {
+    let mut consumer = context.consumer.lock().await;
+    if sender
+        .reply::<StartDefmtLoggingEndpoint>(header.seq_no, &())
+        .await
+        .is_err()
+    {
+        defmt::error!("Failed to send reply to StartDefmtLoggingEndpoint. Stopping...");
+        return;
+    }
+
+    let mut seq = 0u8;
     let mut buf = [0u8; 32];
     let buf_len = buf.len();
-    loop {
+    while !STOP.load(Ordering::Acquire) {
         let grant = consumer.wait_for_log().await;
         let mut n = grant.len();
         while n > 0 {
             if n > buf_len {
                 buf.copy_from_slice(&grant[..buf_len]);
                 n -= buf_len;
-                sender
-                    .publish::<protocol::DefmtLoggingTopic>(cnt.into(), &(buf_len as u8, buf))
+
+                if sender
+                    .publish::<protocol::DefmtLoggingTopic>(seq.into(), &(buf_len as u8, buf))
                     .await
-                    .unwrap();
+                    .is_err()
+                {
+                    defmt::error!("Failed to send defmt log chunk. Stopping...");
+                    return;
+                }
             } else {
                 buf[..n].copy_from_slice(&grant[..n]);
-                sender
-                    .publish::<protocol::DefmtLoggingTopic>(cnt.into(), &(n as u8, buf))
+                if sender
+                    .publish::<protocol::DefmtLoggingTopic>(seq.into(), &(n as u8, buf))
                     .await
-                    .unwrap();
+                    .is_err()
+                {
+                    defmt::error!("Failed to send defmt log chunk. Stopping...");
+                    return;
+                }
                 n = 0;
             }
-            cnt = cnt.wrapping_add(1);
+            seq = seq.wrapping_add(1);
         }
     }
+
+    let _ = sender
+        .publish::<protocol::DefmtLoggingTopic>(seq.into(), &(0, buf))
+        .await;
+
+    STOP.store(false, Ordering::Release);
+}
+
+fn defmt_handler_stop_logging(context: &mut Context, _header: VarHeader, _rqst: ()) -> bool {
+    defmt::info!("defmt stop");
+    let was_busy = context.consumer.try_lock().is_err();
+    if was_busy {
+        STOP.store(true, Ordering::Release);
+    }
+    was_busy
 }
 
 #[embassy_executor::task]
