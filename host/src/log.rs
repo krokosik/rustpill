@@ -8,14 +8,14 @@ use defmt_decoder::{
         format::{Formatter, FormatterConfig, HostFormatter},
     },
 };
-use tokio::fs;
+use tokio::{fs, sync::mpsc};
 
-const READ_BUFFER_SIZE: usize = 1024;
-
-pub async fn run_decoder<P, F>(bin_path: P, mut read_fn: F) -> anyhow::Result<()>
+pub async fn run_decoder<P>(
+    bin_path: P,
+    mut rx: mpsc::UnboundedReceiver<Vec<u8>>,
+) -> anyhow::Result<()>
 where
     P: AsRef<Path>,
-    F: AsyncFnMut(&mut [u8]) -> anyhow::Result<(usize, bool)>,
 {
     let bytes = fs::read(bin_path).await?;
     let table = Table::parse(&bytes)?.ok_or_else(|| anyhow!(".defmt data not found"))?;
@@ -40,18 +40,15 @@ where
 
     defmt_decoder::log::init_logger(formatter, host_formatter, logger_type, |_| true);
 
-    let mut buf = [0; READ_BUFFER_SIZE];
     let mut stream_decoder = table.new_stream_decoder();
     let current_dir = std::env::current_dir()?;
 
-    loop {
-        let (n, eof) = read_fn(&mut buf).await?;
-
-        if eof {
+    while let Some(data) = rx.recv().await {
+        if data.is_empty() {
             break;
         }
 
-        stream_decoder.received(&buf[..n]);
+        stream_decoder.received(&data);
 
         loop {
             match stream_decoder.decode() {
