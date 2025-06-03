@@ -247,13 +247,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "72b3254f16251a8381aa12e40e3c4d2f0199f8c6508fbecb9d91f575e0fbb8c6"
 
 [[package]]
-name = "bbq2"
-version = "0.1.0"
+name = "bbqueue"
+version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3b5bbde0e5324bc9c282e869a2f544166ac94bbb82b26afd2ca82ac7b0742a89"
+checksum = "fd3baa8859d1a4c7411039a75c0599a4640ef1c9a8fc811e4325b00e6cfe0a55"
 dependencies = [
- "critical-section",
- "maitake-sync 0.2.1",
+ "defmt 0.3.100",
 ]
 
 [[package]]
@@ -581,12 +580,13 @@ dependencies = [
 ]
 
 [[package]]
-name = "defmt-bbq2"
-version = "0.1.0"
-source = "git+https://github.com/krokosik/defmt-bbq2#7b459ab13b691b3f9fde192b16a974ad09401777"
+name = "defmt-brtt"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c2f0ac3635d0c89d12b8101fcb44a7625f5f030a1c0491124b74467eb5a58a78"
 dependencies = [
- "bbq2",
- "cortex-m",
+ "bbqueue",
+ "critical-section",
  "defmt 0.3.100",
 ]
 
@@ -1099,7 +1099,7 @@ dependencies = [
  "cortex-m",
  "cortex-m-rt",
  "defmt 1.0.1",
- "defmt-bbq2",
+ "defmt-brtt",
  "defmt-rtt",
  "embassy-executor",
  "embassy-futures",
@@ -1770,21 +1770,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "maitake-sync"
-version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2e2643eb7d41ee3e0f17e4cb6ffaf925eb468337e99f6e180530259bc124177e"
-dependencies = [
- "cordyceps",
- "loom",
- "mutex-traits",
- "mycelium-bitfield",
- "pin-project",
- "portable-atomic",
- "tracing",
-]
-
-[[package]]
 name = "maplit"
 version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1855,12 +1840,6 @@ checksum = "3be647b768db090acb35d5ec5db2b0e1f1de11133ca123b9eacf5137868f892a"
 dependencies = [
  "adler2",
 ]
-
-[[package]]
-name = "mutex-traits"
-version = "1.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fd54cb762feb1788c74f5d3387983864d2365ca1819043d2addb76db80169102"
 
 [[package]]
 name = "mycelium-bitfield"
@@ -2236,7 +2215,7 @@ dependencies = [
  "embassy-usb",
  "embassy-usb-driver",
  "heapless 0.8.0",
- "maitake-sync 0.1.2",
+ "maitake-sync",
  "nusb",
  "portable-atomic",
  "postcard",
