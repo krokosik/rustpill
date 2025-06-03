@@ -1,9 +1,11 @@
 use std::fs::File;
 use std::io::{BufRead, BufReader, Write};
+use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio, exit};
 use std::thread::sleep;
 use std::{env, time};
 
+use anyhow::anyhow;
 use pyo3::prelude::*;
 use pyo3_stub_gen_derive::gen_stub_pyfunction;
 use s3_utils::get_bucket;
@@ -58,11 +60,7 @@ pub fn check_probe_rs() {
     }
 }
 
-#[gen_stub_pyfunction]
-#[pyfunction]
-pub fn flash_binary(binary_name: &str) -> PyResult<()> {
-    check_probe_rs();
-
+pub fn get_binary(binary_name: &str) -> anyhow::Result<PathBuf> {
     let binary_path = env::temp_dir()
         .join(env!("CARGO_PKG_VERSION"))
         .join(binary_name);
@@ -70,12 +68,7 @@ pub fn flash_binary(binary_name: &str) -> PyResult<()> {
     if !binary_path.exists() {
         log::info!("Downloading binary: {:?}", binary_name);
 
-        let bucket = get_bucket().map_err(|e| {
-            PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!(
-                "Failed to get S3 bucket: {}",
-                e
-            ))
-        })?;
+        let bucket = get_bucket()?;
 
         std::fs::create_dir_all(binary_path.parent().unwrap()).map_err(|e| {
             PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!(
@@ -83,20 +76,25 @@ pub fn flash_binary(binary_name: &str) -> PyResult<()> {
                 e
             ))
         })?;
+
         let mut file = File::create(&binary_path)?;
 
-        let mut binary = bucket
-            .get_object(["stm32f103c8", env!("CARGO_PKG_VERSION"), binary_name].join("/"))
-            .map_err(|e| {
-                PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!(
-                    "Failed to get object from S3: {}",
-                    e
-                ))
-            })?;
+        let mut binary =
+            bucket.get_object(["stm32f103c8", env!("CARGO_PKG_VERSION"), binary_name].join("/"))?;
 
         file.write_all(binary.bytes_mut())?;
         file.flush()?;
     }
+
+    Ok(binary_path)
+}
+
+#[gen_stub_pyfunction]
+#[pyfunction]
+pub fn flash_binary(binary_name: &str) -> PyResult<()> {
+    check_probe_rs();
+
+    let binary_path = get_binary(binary_name)?;
     log::info!("Flashing binary: {}", binary_name);
 
     let mut cmd = Command::new("probe-rs");
