@@ -1403,6 +1403,7 @@ dependencies = [
 name = "host"
 version = "0.1.5"
 dependencies = [
+ "anyhow",
  "defmt-decoder",
  "env_logger",
  "log",

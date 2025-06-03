@@ -36,6 +36,12 @@ pyo3-async-runtimes = { workspace = true, features = [
 pyo3-log = { workspace = true }
 pyo3-stub-gen = { workspace = true }
 pyo3-stub-gen-derive = { workspace = true }
-tokio = { workspace = true, features = ["macros", "time", "rt-multi-thread"] }
+tokio = { workspace = true, features = [
+    "macros",
+    "time",
+    "rt-multi-thread",
+    "fs",
+] }
 serde = { workspace = true }
 defmt-decoder = "1.0.0"
+anyhow = "1.0.98"

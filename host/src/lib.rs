@@ -3,6 +3,7 @@ use pyo3::{ffi::c_str, prelude::*};
 mod common;
 mod flash;
 mod hosts;
+mod log;
 
 use pyo3_stub_gen::define_stub_info_gatherer;
 
