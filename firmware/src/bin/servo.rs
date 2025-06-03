@@ -1,6 +1,7 @@
 #![no_std]
 #![no_main]
 
+use defmt_brtt as _;
 use embassy_executor::Spawner;
 use embassy_stm32::{
     Config, bind_interrupts,
@@ -72,7 +73,7 @@ define_dispatch! {
 
 #[embassy_executor::main]
 async fn main(spawner: Spawner) {
-    let consumer = defmt_bbq2::init().unwrap();
+    let consumer = defmt_brtt::init().unwrap();
 
     let mut config = Config::default();
     enable_usb_clock(&mut config);
@@ -141,12 +142,12 @@ async fn main(spawner: Spawner) {
 }
 
 #[embassy_executor::task]
-async fn logging_task(sender: Sender<AppTx>, mut consumer: defmt_bbq2::DefmtConsumer) {
+async fn logging_task(sender: Sender<AppTx>, mut consumer: defmt_brtt::DefmtConsumer) {
     let mut cnt = 0u32;
     let mut buf = [0u8; 32];
     let buf_len = buf.len();
     loop {
-        let grant = consumer.read().await;
+        let grant = consumer.wait_for_log().await;
         let mut n = grant.len();
         while n > 0 {
             if n > buf_len {
