@@ -1,8 +1,10 @@
 use std::{env, error::Error, path::Path};
 
+use s3::error::S3Error;
+
 const MINIO_BUCKET: &str = "rustpill-firmwares";
 
-pub fn get_bucket() -> Result<Box<s3::Bucket>, Box<dyn Error>> {
+pub fn get_bucket() -> Result<Box<s3::Bucket>, S3Error> {
     let minio_endpoint = env::var("MINIO_ENDPOINT").unwrap_or("https://s3.qodl.eu".to_string());
     let access_key_id = env::var("MINIO_ACCESS_KEY_ID").ok();
     let secret_access_key = env::var("MINIO_SECRET_ACCESS_KEY").ok();
