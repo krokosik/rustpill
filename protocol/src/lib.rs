@@ -12,12 +12,12 @@ use pyo3_stub_gen::derive::*;
 endpoints! {
     list = SERVO_ENDPOINT_LIST;
     omit_std = true;
-    | EndpointTy                | RequestTy                            | ResponseTy            | Path              |
-    | ----------                | ---------                            | ----------            | ----              |
-    | GetUniqueIdEndpoint       | ()                                   | [u8; 12]              | "unique_id/get"   |
-    | ConfigureChannel          | (PwmChannel, ServoChannelConfig)     | ()                    | "servo/channel"   |
-    | GetServoConfig            | ()                                   | ServoConfig           | "servo/config"    |
-    | SetFrequencyEndpoint      | u32                                  | ()                    | "servo/frequency" |
+    | EndpointTy             | RequestTy    | ResponseTy     | Path              |
+    | ----------             | ---------    | ----------     | ----              |
+    | GetUniqueIdEndpoint    | ()           | [u8; 12]       | "unique_id/get"   |
+    | ConfigureChannel       | ConfigRsqt   | ()             | "servo/channel"   |
+    | GetServoConfig         | ()           | ServoConfig    | "servo/config"    |
+    | SetFrequencyEndpoint   | u32          | ()             | "servo/frequency" |
 }
 
 topics! {
@@ -32,6 +32,15 @@ topics! {
     direction = TopicDirection::ToClient;
     | TopicTy                   | MessageTy     | Path              | Cfg                           |
     | -------                   | ---------     | ----              | ---                           |
+}
+
+pub type ConfigRsqt = (PwmTimer, PwmChannel, ServoChannelConfig);
+
+#[derive(Serialize, Deserialize, Schema, Debug, PartialEq, Clone, Copy)]
+pub enum PwmTimer {
+    TIM2,
+    TIM3,
+    TIM4,
 }
 
 #[derive(Serialize, Deserialize, Schema, Debug, PartialEq, Clone, Copy)]
@@ -70,5 +79,5 @@ pub struct ServoChannelConfig {
 pub struct ServoConfig {
     pub servo_frequency: u32,
     pub max_duty_cycle: u16,
-    pub channels: [ServoChannelConfig; 4],
+    pub channels: [[ServoChannelConfig; 4]; 3],
 }

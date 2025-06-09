@@ -3,12 +3,12 @@
 
 use embassy_executor::Spawner;
 use embassy_stm32::{
-    Config, bind_interrupts,
+    Config, Peripheral, bind_interrupts,
     gpio::{Level, Output, OutputType, Speed},
     peripherals,
     time::Hertz,
     timer::{
-        self,
+        self, GeneralInstance4Channel,
         simple_pwm::{PwmPin, SimplePwm, SimplePwmChannel},
     },
     usb,
@@ -23,15 +23,15 @@ use postcard_rpc::{
     },
 };
 use protocol::{
-    ConfigureChannel, GetServoConfig, GetUniqueIdEndpoint, PwmChannel, SERVO_ENDPOINT_LIST,
-    ServoChannelConfig, ServoConfig, SetFrequencyEndpoint, TOPICS_IN_LIST, TOPICS_OUT_LIST,
+    ConfigRsqt, ConfigureChannel, GetServoConfig, GetUniqueIdEndpoint, PwmChannel, PwmTimer,
+    SERVO_ENDPOINT_LIST, ServoConfig, SetFrequencyEndpoint, TOPICS_IN_LIST, TOPICS_OUT_LIST,
 };
 use {defmt_rtt as _, panic_probe as _};
 
 use firmware::*;
 
 struct Context {
-    pwm: SimplePwm<'static, peripherals::TIM4>, // Possibly expand to more timers in the future
+    pwms: BluePillPwms,
     config: ServoConfig,
 }
 
@@ -42,6 +42,8 @@ const SERVO_MIN_US: u32 = 500;
 const SERVO_MAX_US: u32 = 2500;
 
 bind_interrupts!(struct Irqs {
+    TIM2 => timer::CaptureCompareInterruptHandler<peripherals::TIM2>;
+    TIM3 => timer::CaptureCompareInterruptHandler<peripherals::TIM3>;
     TIM4 => timer::CaptureCompareInterruptHandler<peripherals::TIM4>;
     USB_LP_CAN1_RX0 => usb::InterruptHandler<peripherals::USB>;
 });
@@ -83,7 +85,25 @@ async fn main(spawner: Spawner) {
     let pbufs = PBUFS.take();
 
     /********************************** PWM **********************************/
-    let pwm = SimplePwm::new(
+    let pwm2 = SimplePwm::new(
+        p.TIM2,
+        Some(PwmPin::new_ch1(p.PA0, OutputType::PushPull)),
+        Some(PwmPin::new_ch2(p.PA1, OutputType::PushPull)),
+        Some(PwmPin::new_ch3(p.PA2, OutputType::PushPull)),
+        Some(PwmPin::new_ch4(p.PA3, OutputType::PushPull)),
+        SERVO_FREQ,
+        timer::low_level::CountingMode::CenterAlignedBothInterrupts,
+    );
+    let pwm3 = SimplePwm::new(
+        p.TIM3,
+        Some(PwmPin::new_ch1(p.PA6, OutputType::PushPull)),
+        Some(PwmPin::new_ch2(p.PA7, OutputType::PushPull)),
+        Some(PwmPin::new_ch3(p.PB0, OutputType::PushPull)),
+        Some(PwmPin::new_ch4(p.PB1, OutputType::PushPull)),
+        SERVO_FREQ,
+        timer::low_level::CountingMode::CenterAlignedBothInterrupts,
+    );
+    let pwm4 = SimplePwm::new(
         p.TIM4,
         Some(PwmPin::new_ch1(p.PB6, OutputType::PushPull)),
         Some(PwmPin::new_ch2(p.PB7, OutputType::PushPull)),
@@ -92,7 +112,10 @@ async fn main(spawner: Spawner) {
         SERVO_FREQ,
         timer::low_level::CountingMode::CenterAlignedBothInterrupts,
     );
-    let max_duty_cycle = pwm.max_duty_cycle() as u32;
+
+    let pwms = (pwm2, pwm3, pwm4);
+
+    let max_duty_cycle = pwms.0.max_duty_cycle() as u32;
     defmt::info!("Max Duty Cycle: {}", max_duty_cycle);
     let servo_min = max_duty_cycle * SERVO_FREQ.0 / 1_000 * SERVO_MIN_US / 1_000;
     let servo_max = max_duty_cycle * SERVO_FREQ.0 / 1_000 * SERVO_MAX_US / 1_000;
@@ -118,15 +141,15 @@ async fn main(spawner: Spawner) {
     let mut servo_config = ServoConfig::default();
     servo_config.servo_frequency = SERVO_FREQ.0;
     servo_config.max_duty_cycle = max_duty_cycle as u16;
-    for i in 0..4 {
-        servo_config.channels[i].min_angle_duty_cycle = servo_min as u16;
-        servo_config.channels[i].max_angle_duty_cycle = servo_max as u16;
-        servo_config.channels[i].enabled = false;
+    for ch in servo_config.channels.iter_mut().flatten() {
+        ch.min_angle_duty_cycle = servo_min as u16;
+        ch.max_angle_duty_cycle = servo_max as u16;
+        ch.enabled = false;
     }
 
     let context = Context {
         config: servo_config,
-        pwm,
+        pwms,
     };
     let (device, tx_impl, rx_impl) = STORAGE.init(driver, usb_config, pbufs.tx_buf.as_mut_slice());
     let dispatcher = ServoApp::new(context, spawner.into());
@@ -158,14 +181,10 @@ fn unique_id_handler(_context: &mut Context, _header: VarHeader, _rqst: ()) -> [
     *embassy_stm32::uid::uid()
 }
 
-fn configure_channel_handler(
-    context: &mut Context,
-    _header: VarHeader,
-    rqst: (PwmChannel, ServoChannelConfig),
-) {
+fn configure_channel_handler(context: &mut Context, _header: VarHeader, rqst: ConfigRsqt) {
     defmt::info!("configure_channel");
 
-    let (channel, config) = rqst;
+    let (timer, channel, config) = rqst;
     let mut ch = get_channel(&mut context.pwm, channel);
 
     defmt::info!(
@@ -189,15 +208,30 @@ fn get_servo_config_handler(context: &mut Context, _header: VarHeader, _rqst: ()
     context.config.clone()
 }
 
-fn get_channel<'d>(
-    pwm: &'d mut SimplePwm<peripherals::TIM4>,
-    channel: PwmChannel,
-) -> SimplePwmChannel<'d, peripherals::TIM4> {
-    match channel {
-        PwmChannel::Channel1 => pwm.ch1(),
-        PwmChannel::Channel2 => pwm.ch2(),
-        PwmChannel::Channel3 => pwm.ch3(),
-        PwmChannel::Channel4 => pwm.ch4(),
+struct BluePillPwms(
+    SimplePwm<'static, peripherals::TIM2>,
+    SimplePwm<'static, peripherals::TIM3>,
+    SimplePwm<'static, peripherals::TIM4>,
+);
+
+impl BluePillPwms {
+    fn get_channel<'d>(
+        &'d mut self,
+        timer: PwmTimer,
+        channel: PwmChannel,
+    ) -> SimplePwmChannel<'d, impl Peripheral<GeneralInstance4Channel>> {
+        let pwm = match timer {
+            PwmTimer::TIM2 => self.0,
+            PwmTimer::TIM3 => self.1,
+            PwmTimer::TIM4 => self.2,
+        };
+
+        match channel {
+            PwmChannel::Channel1 => pwm.ch1(),
+            PwmChannel::Channel2 => pwm.ch2(),
+            PwmChannel::Channel3 => pwm.ch3(),
+            PwmChannel::Channel4 => pwm.ch4(),
+        }
     }
 }
 
