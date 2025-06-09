@@ -7,7 +7,7 @@ use pyo3::prelude::*;
 use pyo3_stub_gen::derive::*;
 
 use crate::{
-    common::{BoardError, BoardResult, connect_to_board},
+    common::{BoardError, BoardResult, connect_logger, connect_to_board},
     flash::flash_binary,
 };
 
@@ -30,8 +30,10 @@ pub struct ServoClient {
 impl ServoClient {
     #[new]
     #[pyo3(signature = (serial_number = None))]
-    async fn new(serial_number: Option<&str>) -> BoardResult<Self> {
+    async fn new(py: Python<'_>, serial_number: Option<&str>) -> BoardResult<Self> {
         let client = connect_to_board(USB_DEVICE_NAME, serial_number).await?;
+
+        connect_logger(py, &client).await?;
 
         let config = client.send_resp::<GetServoConfig>(&()).await?;
         log::info!("Servo config: {:?}", config);

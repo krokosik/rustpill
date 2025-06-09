@@ -1,6 +1,5 @@
-use std::{convert::Infallible, fmt::Debug};
+use std::{convert::Infallible, fmt::Debug, sync::mpsc};
 
-use anyhow::anyhow;
 use postcard_rpc::{
     header::VarSeqKind,
     host_client::{HostClient, HostErr, IoClosed, SchemaError},
@@ -61,20 +60,29 @@ pub async fn connect_to_board(
 
     log::info!("Connected to servo board");
 
+    Ok(client)
+}
+
+pub async fn connect_logger(
+    py: Python<'_>,
+    client: &HostClient<WireError>,
+) -> Result<(), BoardError<Infallible>> {
     let mut logsub = client
         .subscribe_multi::<protocol::DefmtLoggingTopic>(64)
         .await?;
 
-    let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<Vec<u8>>();
+    let (tx, rx) = mpsc::channel::<Vec<u8>>();
 
-    core::mem::drop(tokio::task::spawn(async move {
-        let binary_path = get_binary("servo").unwrap();
-        run_decoder(&binary_path, rx).await
-    }));
+    // ! Figure out how to use `tokio` instead of `std::thread` for async compatibility
+    py.allow_threads(|| {
+        std::thread::spawn(move || {
+            let binary_path = get_binary("servo").unwrap();
+            let _ = run_decoder(&binary_path, rx);
+        });
+    });
 
     log::info!("Created log subscription");
 
-    // Spawn a background task to handle log messages
     core::mem::drop(tokio::task::spawn(async move {
         log::info!("Starting log subscription");
         while let Ok((n, buf)) = logsub.recv().await {
@@ -87,7 +95,7 @@ pub async fn connect_to_board(
 
     log::info!("Initialized board client");
 
-    Ok(client)
+    Ok(())
 }
 
 #[derive(Debug)]

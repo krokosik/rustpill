@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::{fs, path::Path, sync::mpsc};
 
 use anyhow::anyhow;
 use defmt_decoder::{
@@ -8,16 +8,12 @@ use defmt_decoder::{
         format::{Formatter, FormatterConfig, HostFormatter},
     },
 };
-use tokio::{fs, sync::mpsc};
 
-pub async fn run_decoder<P>(
-    bin_path: P,
-    mut rx: mpsc::UnboundedReceiver<Vec<u8>>,
-) -> anyhow::Result<()>
+pub fn run_decoder<P>(bin_path: P, rx: mpsc::Receiver<Vec<u8>>) -> anyhow::Result<()>
 where
     P: AsRef<Path>,
 {
-    let bytes = fs::read(bin_path).await?;
+    let bytes = fs::read(bin_path)?;
     let table = Table::parse(&bytes)?.ok_or_else(|| anyhow!(".defmt data not found"))?;
     let locs = table.get_locations(&bytes)?;
 
@@ -43,7 +39,7 @@ where
     let mut stream_decoder = table.new_stream_decoder();
     let current_dir = std::env::current_dir()?;
 
-    while let Some(data) = rx.recv().await {
+    while let Ok(data) = rx.recv() {
         if data.is_empty() {
             break;
         }
