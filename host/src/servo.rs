@@ -6,7 +6,7 @@ use pyo3_stub_gen::derive::*;
 use std::convert::Infallible;
 
 use crate::{
-    common::{BoardError, connect_to_board},
+    common::{BoardError, connect_logger, connect_to_board},
     flash::flash_binary,
 };
 
@@ -29,8 +29,13 @@ pub struct ServoClient {
 impl ServoClient {
     #[new]
     #[pyo3(signature = (serial_number = None))]
-    async fn new(serial_number: Option<&str>) -> Result<Self, BoardError<Infallible>> {
+    async fn new(
+        py: Python<'_>,
+        serial_number: Option<&str>,
+    ) -> Result<Self, BoardError<Infallible>> {
         let client = connect_to_board(serial_number).await?;
+
+        connect_logger(py, &client).await?;
 
         let config = client.send_resp::<protocol::GetServoConfig>(&()).await?;
         log::info!("Servo config: {:?}", config);
