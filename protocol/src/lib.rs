@@ -18,6 +18,7 @@ endpoints! {
     | ConfigureChannel          | (PwmChannel, ServoChannelConfig)     | ()                    | "servo/channel"   |
     | GetServoConfig            | ()                                   | ServoConfig           | "servo/config"    |
     | SetFrequencyEndpoint      | u32                                  | ()                    | "servo/frequency" |
+    | SetStepperEndpoint        | u32                                  | ()                    | "stepper/config"  |
 }
 
 topics! {
@@ -71,4 +72,21 @@ pub struct ServoConfig {
     pub servo_frequency: u32,
     pub max_duty_cycle: u16,
     pub channels: [ServoChannelConfig; 4],
+}
+
+#[cfg_attr(feature = "use-std", gen_stub_pyclass, pyclass(get_all, set_all))]
+#[derive(Serialize, Deserialize, Schema, Debug, Default, PartialEq, Clone)]
+pub struct StepperChannelConfig {
+    // pub min_angle_duty_cycle: u16,
+    // pub max_angle_duty_cycle: u16,
+    pub current_duty_cycle: u16,
+    pub enabled: bool,
+}
+
+#[cfg_attr(feature = "use-std", gen_stub_pyclass, pyclass(get_all, set_all))]
+#[derive(Serialize, Deserialize, Schema, Debug, Default, PartialEq, Clone)]
+pub struct StepperConfig {
+    pub stepper_frequency: u32,
+    pub max_duty_cycle: u16,
+    pub channels: [StepperChannelConfig; 4],
 }
