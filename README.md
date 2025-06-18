@@ -11,6 +11,7 @@ This is a WIP implementation/exploration of using modern Rust technologies for m
 - **probe-rs** used for flashing firmware and debugging code running on MCU.
 
 Other interesting resources:
+- [Bluepill HAL docs](https://docs.embassy.dev/embassy-stm32/git/stm32f103c8/index.html)
 - [Workbook for Embedded Workshops](https://embedded-trainings.ferrous-systems.com/preparations)
 - [The Embedonomicon](https://docs.rust-embedded.org/embedonomicon/preface.html)
 
