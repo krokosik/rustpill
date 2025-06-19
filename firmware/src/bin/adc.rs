@@ -3,10 +3,14 @@
 
 //START IMPORTS
 use embassy_executor::Spawner;
+use embassy_futures::block_on;
 use embassy_stm32::{
-    Config, bind_interrupts,
+    Config,
+    adc::Adc,
+    bind_interrupts,
     gpio::{Level, Output, Speed},
-    peripherals, usb,
+    peripherals::{self, PA0},
+    usb,
 };
 use embassy_time::Timer;
 use postcard_rpc::{
@@ -26,8 +30,12 @@ use {defmt_rtt as _, panic_probe as _};
 use firmware::*;
 //END IMPORTS
 
-//context for server
-struct Context {}
+/***context for server
+ * **/
+struct Context {
+    adc: Adc<'static, peripherals::ADC1>,
+    adc_pin: PA0,
+}
 
 type AppServer = Server<AppTx, AppRx, WireRxBuf, App>;
 
@@ -74,6 +82,16 @@ async fn main(spawner: Spawner) {
 
     let pbufs = PBUFS.take();
 
+    /********************************** START ADC **********************************/
+    let hadc = Adc::new(p.ADC1);
+    let adc_pin0 = p.PA0;
+    // let adc_val = hadc.read(&mut adc_pin0).await; //test
+    let context = Context {
+        adc: hadc,
+        adc_pin: adc_pin0,
+    };
+    // let context = Context {};
+    /********************************** END ADC **********************************/
     /********************************** USB **********************************/
     {
         // BluePill board has a pull-up resistor on the D+ line.
@@ -90,8 +108,6 @@ async fn main(spawner: Spawner) {
 
     // Create embassy-usb Config
     let usb_config = get_usb_config("bluepill-servo");
-
-    let context = Context {};
 
     let (device, tx_impl, rx_impl) = STORAGE.init(driver, usb_config, pbufs.tx_buf.as_mut_slice());
     let dispatcher = App::new(context, spawner.into());
@@ -129,7 +145,7 @@ fn unique_id_handler(_context: &mut Context, _header: VarHeader, _rqst: ()) -> [
     *embassy_stm32::uid::uid()
 }
 
-fn get_adc_val(_context: &mut Context, _header: VarHeader, _rqst: ()) -> u16 {
-    5 //test
+fn get_adc_val(context: &mut Context, _header: VarHeader, _rqst: ()) -> u16 {
+    block_on(context.adc.read(&mut context.adc_pin)) //test
 }
 //END FUNCTIONS FOR ENDPOINTS
