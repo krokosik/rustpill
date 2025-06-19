@@ -24,14 +24,14 @@ use firmware::*;
 
 struct Context {}
 
-type AppServer = Server<AppTx, AppRx, WireRxBuf, AdcApp>;
+type AppServer = Server<AppTx, AppRx, WireRxBuf, App>;
 
 bind_interrupts!(struct Irqs {
     USB_LP_CAN1_RX0 => usb::InterruptHandler<peripherals::USB>;
 });
 
 define_dispatch! {
-    app: AdcApp;
+    app: App;
     spawn_fn: spawn_fn;
     tx_impl: AppTx;
     spawn_impl: WireSpawnImpl;
@@ -82,7 +82,7 @@ async fn main(spawner: Spawner) {
     let context = Context {};
 
     let (device, tx_impl, rx_impl) = STORAGE.init(driver, usb_config, pbufs.tx_buf.as_mut_slice());
-    let dispatcher = AdcApp::new(context, spawner.into());
+    let dispatcher = App::new(context, spawner.into());
     let vkk = dispatcher.min_key_len();
     let server: AppServer = Server::new(
         tx_impl,

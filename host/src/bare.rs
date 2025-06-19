@@ -1,6 +1,6 @@
 use macros::blocking_async;
 use postcard_rpc::{host_client::HostClient, standard_icd::WireError};
-use protocol::{EmptyConfig, GetUniqueIdEndpoint};
+use protocol::GetUniqueIdEndpoint;
 use pyo3::prelude::*;
 use pyo3_stub_gen::derive::*;
 use std::convert::Infallible;
@@ -9,8 +9,6 @@ use crate::{
     common::{BoardError, connect_to_board},
     flash::flash_binary,
 };
-
-// const STM32_PWM_RESOLUTION_BITS: u8 = 16;
 
 /// This class communicates with Bluepill Servo Rust firmware. You can pass a serial number to the
 /// constructor to connect to a specific device. If no port is passed, it will try to connect to the first
@@ -35,7 +33,7 @@ impl Client {
 
     #[staticmethod]
     /// Flash the servo firmware to the board.
-    /// This function will use the `probe-rs` tool to flash the firmware binary to the board.
+    /// This function will use the `probe rs` tool to flash the firmware binary to the board.
     fn flash() -> PyResult<()> {
         flash_binary("servo")?;
         Ok(())
@@ -52,7 +50,7 @@ impl Client {
     }
 
     /// Get the serial number of the board.
-    /// The ID is a 92-bit number, which is padded to 128 bits with zeros.
+    /// The ID is a 92 bit number, which is padded to 128 bits with zeros.
     ///
     /// :return: The serial number of the board.
     async fn get_serial_number(&self) -> Result<u128, BoardError<Infallible>> {
