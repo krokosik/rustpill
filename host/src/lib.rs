@@ -1,5 +1,6 @@
 use pyo3::{ffi::c_str, prelude::*};
 
+mod adc;
 mod common;
 mod flash;
 mod servo;
