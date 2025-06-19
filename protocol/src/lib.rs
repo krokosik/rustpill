@@ -15,6 +15,7 @@ endpoints! {
     | EndpointTy                | RequestTy                            | ResponseTy            | Path              |
     | ----------                | ---------                            | ----------            | ----              |
     | GetUniqueIdEndpoint       | ()                                   | [u8; 12]              | "unique_id/get"   |
+    | GetAdcValEndpoint         | ()                                   | u16                   | "adc_val/get"     | //what in path?
 }
 
 topics! {

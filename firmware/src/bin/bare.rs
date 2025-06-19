@@ -43,6 +43,7 @@ define_dispatch! {
         | EndpointTy                | kind      | handler                       |
         | ----------                | ----      | -------                       |
         | GetUniqueIdEndpoint       | blocking  | unique_id_handler             |
+        | GetAdcValEndpoint         | blocking  | get_adc_val                   |
     };
     topics_in: {
         list: TOPICS_IN_LIST;
@@ -127,4 +128,7 @@ fn unique_id_handler(_context: &mut Context, _header: VarHeader, _rqst: ()) -> [
     *embassy_stm32::uid::uid()
 }
 
+fn get_adc_val() -> u16 {
+    5 //test
+}
 //END FUNCTIONS FOR ENDPOINTS
