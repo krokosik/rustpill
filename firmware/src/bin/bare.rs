@@ -17,7 +17,9 @@ use postcard_rpc::{
         impls::embassy_usb_v0_4::dispatch_impl::{WireRxBuf, WireSpawnImpl},
     },
 };
-use protocol::{ENDPOINT_LIST, GetUniqueIdEndpoint, TOPICS_IN_LIST, TOPICS_OUT_LIST};
+use protocol::{
+    ENDPOINT_LIST, GetAdcValEndpoint, GetUniqueIdEndpoint, TOPICS_IN_LIST, TOPICS_OUT_LIST,
+};
 
 use {defmt_rtt as _, panic_probe as _};
 
@@ -36,7 +38,6 @@ define_dispatch! {
     spawn_impl: WireSpawnImpl;
     context: Context;
 
-//define endpoint functions, endpoints from protocol/src/lib
     endpoints: {
         list: ENDPOINT_LIST;
 
@@ -128,7 +129,7 @@ fn unique_id_handler(_context: &mut Context, _header: VarHeader, _rqst: ()) -> [
     *embassy_stm32::uid::uid()
 }
 
-fn get_adc_val() -> u16 {
+fn get_adc_val(_context: &mut Context, _header: VarHeader, _rqst: ()) -> u16 {
     5 //test
 }
 //END FUNCTIONS FOR ENDPOINTS
