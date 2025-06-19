@@ -7,10 +7,7 @@ use std::convert::Infallible;
 
 use crate::{
     common::{BoardError, connect_to_board},
-    flash::flash_binary,
-};
-
-/// This class communicates with Bluepill Servo Rust firmware. You can pass a serial number to the
+    flash::flash_bin/// This /// This class communicates with Bluepill Rust firmware. You can pass a serial number to the
 /// constructor to connect to a specific device. If no port is passed, it will try to connect to the first
 /// available device by product string.
 #[gen_stub_pyclass]
@@ -49,6 +46,8 @@ impl Client {
         !self.client.is_closed()
     }
 
+    /*START FUNCTIONS FOR PYTHON CLIENT*/
+
     /// Get the serial number of the board.
     /// The ID is a 92 bit number, which is padded to 128 bits with zeros.
     ///
@@ -60,3 +59,8 @@ impl Client {
         Ok(u128::from_le_bytes(padded_id))
     }
 }
+//END FUNCTIONS FOR PYTHON CLIENT
+dded_id))
+    }
+}
+//END FUNCTIONS FOR PYTHON CLIENT

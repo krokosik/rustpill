@@ -1,6 +1,7 @@
 #![no_std]
 #![no_main]
 
+//START IMPORTS
 use embassy_executor::Spawner;
 use embassy_stm32::{
     Config, bind_interrupts,
@@ -21,14 +22,12 @@ use protocol::{ENDPOINT_LIST, GetUniqueIdEndpoint, TOPICS_IN_LIST, TOPICS_OUT_LI
 use {defmt_rtt as _, panic_probe as _};
 
 use firmware::*;
+//END IMPORTS
 
+//context for server
 struct Context {}
 
 type AppServer = Server<AppTx, AppRx, WireRxBuf, App>;
-
-bind_interrupts!(struct Irqs {
-    USB_LP_CAN1_RX0 => usb::InterruptHandler<peripherals::USB>;
-});
 
 define_dispatch! {
     app: App;
@@ -37,6 +36,7 @@ define_dispatch! {
     spawn_impl: WireSpawnImpl;
     context: Context;
 
+//define endpoint functions, endpoints from protocol/src/lib
     endpoints: {
         list: ENDPOINT_LIST;
 
@@ -55,10 +55,19 @@ define_dispatch! {
     };
 }
 
+//binding interrupt functions
+bind_interrupts!(struct Irqs {
+    USB_LP_CAN1_RX0 => usb::InterruptHandler<peripherals::USB>;
+});
+
+//first function of programme
 #[embassy_executor::main]
 async fn main(spawner: Spawner) {
+    //config with clocks
     let mut config = Config::default();
     enable_usb_clock(&mut config);
+
+    //START INIT PERIPHERALS
     let mut p = embassy_stm32::init(config);
 
     let pbufs = PBUFS.take();
@@ -69,6 +78,7 @@ async fn main(spawner: Spawner) {
         // Pull the D+ pin down to send a RESET condition to the USB bus.
         // This forced reset is needed only for development, without it host
         // will not reset your device when you upload new firmware.
+
         let _dp = Output::new(&mut p.PA12, Level::Low, Speed::Low);
         Timer::after_millis(10).await;
     }
@@ -91,7 +101,11 @@ async fn main(spawner: Spawner) {
         dispatcher,
         vkk,
     );
+    /********************************** END USB **********************************/
 
+    //END INIT PERIPHERALS
+
+    //spawn tasks
     spawner.must_spawn(usb_task(device));
     spawner.must_spawn(server_task(server));
     spawner.must_spawn(idle_task());
@@ -106,7 +120,11 @@ async fn server_task(mut server: AppServer) {
     }
 }
 
+//START FUNCTIONS FOR ENDPOINTS
+
 fn unique_id_handler(_context: &mut Context, _header: VarHeader, _rqst: ()) -> [u8; 12] {
     defmt::info!("unique_id");
     *embassy_stm32::uid::uid()
 }
+
+//END FUNCTIONS FOR ENDPOINTS
