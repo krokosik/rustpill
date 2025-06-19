@@ -16,25 +16,17 @@ use postcard_rpc::{
         impls::embassy_usb_v0_4::dispatch_impl::{WireRxBuf, WireSpawnImpl},
     },
 };
-use protocol::{ENDPOINT_LIST, EmptyConfig, GetUniqueIdEndpoint, TOPICS_IN_LIST, TOPICS_OUT_LIST};
+use protocol::{ENDPOINT_LIST, GetUniqueIdEndpoint, TOPICS_IN_LIST, TOPICS_OUT_LIST};
 
 use {defmt_rtt as _, panic_probe as _};
 
 use firmware::*;
 
-struct Context {
-    // pwm: SimplePwm<'static, peripherals::TIM4>, // Possibly expand to more timers in the future
-    config: EmptyConfig,
-}
+struct Context {}
 
 type AppServer = Server<AppTx, AppRx, WireRxBuf, AdcApp>;
 
-// const SERVO_FREQ: Hertz = Hertz(50);
-// const SERVO_MIN_US: u32 = 500;
-// const SERVO_MAX_US: u32 = 2500;
-
 bind_interrupts!(struct Irqs {
-    // TIM4 => timer::CaptureCompareInterruptHandler<peripherals::TIM4>;
     USB_LP_CAN1_RX0 => usb::InterruptHandler<peripherals::USB>;
 });
 
@@ -51,9 +43,6 @@ define_dispatch! {
         | EndpointTy                | kind      | handler                       |
         | ----------                | ----      | -------                       |
         | GetUniqueIdEndpoint       | blocking  | unique_id_handler             |
-        // | ConfigureChannel          | blocking  | configure_channel_handler     |
-        // | GetServoConfig            | blocking  | get_servo_config_handler      |
-        // | SetFrequencyEndpoint      | blocking  | set_frequency_handler         |
     };
     topics_in: {
         list: TOPICS_IN_LIST;
@@ -90,11 +79,8 @@ async fn main(spawner: Spawner) {
     // Create embassy-usb Config
     let usb_config = get_usb_config("bluepill-servo");
 
-    let context_config = EmptyConfig::default();
+    let context = Context {};
 
-    let context = Context {
-        config: context_config,
-    };
     let (device, tx_impl, rx_impl) = STORAGE.init(driver, usb_config, pbufs.tx_buf.as_mut_slice());
     let dispatcher = AdcApp::new(context, spawner.into());
     let vkk = dispatcher.min_key_len();

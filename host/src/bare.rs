@@ -19,8 +19,6 @@ use crate::{
 #[pyclass]
 pub struct Client {
     client: HostClient<WireError>,
-    #[pyo3(get)]
-    config: EmptyConfig,
 }
 
 #[blocking_async]
@@ -32,7 +30,7 @@ impl Client {
     async fn new(serial_number: Option<&str>) -> Result<Self, BoardError<Infallible>> {
         let client = connect_to_board(serial_number).await?;
 
-        Ok(Self { client, None })
+        Ok(Self { client })
     }
 
     #[staticmethod]
