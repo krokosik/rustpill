@@ -1,8 +1,6 @@
 #![cfg_attr(not(feature = "use-std"), no_std)]
 
 use postcard_rpc::{TopicDirection, endpoints, topics};
-use postcard_schema::Schema;
-use serde::{Deserialize, Serialize};
 
 #[cfg(feature = "use-std")]
 use pyo3::prelude::*;
@@ -30,7 +28,3 @@ topics! {
     | TopicTy                   | MessageTy     | Path              | Cfg                           |
     | -------                   | ---------     | ----              | ---                           |
 }
-
-#[cfg_attr(feature = "use-std", gen_stub_pyclass, pyclass(get_all, set_all))]
-#[derive(Serialize, Deserialize, Schema, Debug, Default, PartialEq, Clone)]
-pub struct EmptyConfig {}
