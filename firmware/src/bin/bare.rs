@@ -1,8 +1,6 @@
 #![no_std]
 #![no_main]
 
-use core::iter::Empty;
-
 use embassy_executor::Spawner;
 use embassy_stm32::{
     Config, bind_interrupts,
@@ -92,7 +90,7 @@ async fn main(spawner: Spawner) {
     // Create embassy-usb Config
     let usb_config = get_usb_config("bluepill-servo");
 
-    let mut context_config = EmptyConfig::default();
+    let context_config = EmptyConfig::default();
 
     let context = Context {
         config: context_config,

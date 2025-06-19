@@ -32,10 +32,7 @@ impl Client {
     async fn new(serial_number: Option<&str>) -> Result<Self, BoardError<Infallible>> {
         let client = connect_to_board(serial_number).await?;
 
-        let config = client.send_resp::<protocol::GetServoConfig>(&()).await?;
-        log::info!("Servo config: {:?}", config);
-
-        Ok(Self { client, config })
+        Ok(Self { client, None })
     }
 
     #[staticmethod]
