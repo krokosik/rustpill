@@ -17,6 +17,14 @@ Other interesting resources:
 - [Workbook for Embedded Workshops](https://embedded-trainings.ferrous-systems.com/preparations)
 - [The Embedonomicon](https://docs.rust-embedded.org/embedonomicon/preface.html)
 
+## Abstractions
+
+In comparison to C, there is much more abstraction offered by the Rust ecosystem, in order to deliver convenience and safety. The `embassy` framework offers its own `embassy-stm32` HAL as well as a crate with structs generated based on actual hardware - PAC.
+
+![Crates](./docs/crates.png)
+
+You can read more [here](https://docs.rust-embedded.org/book/start/registers.html) (note that this book uses a different HAL and PAC). Usually, you should rely on the HAL offered abstractions, and resort to `embassy-stm32::pac` or `cortex-m` crate when necessary. The best point to start is looking at the documentation, linked above.
+
 ## Setup
 
 1. Install Rust via [rustup](https://www.rust-lang.org/tools/install) and `probe-rs` version `0.28.0` via:
