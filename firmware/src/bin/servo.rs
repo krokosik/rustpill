@@ -4,7 +4,7 @@
 use embassy_executor::Spawner;
 use embassy_stm32::{
     Config, bind_interrupts,
-    gpio::{Level, Output, OutputType, Speed},
+    gpio::OutputType,
     peripherals,
     time::Hertz,
     timer::{
@@ -13,7 +13,6 @@ use embassy_stm32::{
     },
     usb,
 };
-use embassy_time::Timer;
 use postcard_rpc::{
     define_dispatch,
     header::VarHeader,
@@ -80,8 +79,6 @@ async fn main(spawner: Spawner) {
     enable_usb_clock(&mut config);
     let mut p = embassy_stm32::init(config);
 
-    let pbufs = PBUFS.take();
-
     /********************************** PWM **********************************/
     let pwm = SimplePwm::new(
         p.TIM4,
@@ -99,22 +96,6 @@ async fn main(spawner: Spawner) {
 
     defmt::info!("Servo min: {}, Servo max: {}", servo_min, servo_max);
 
-    /********************************** USB **********************************/
-    {
-        // BluePill board has a pull-up resistor on the D+ line.
-        // Pull the D+ pin down to send a RESET condition to the USB bus.
-        // This forced reset is needed only for development, without it host
-        // will not reset your device when you upload new firmware.
-        let _dp = Output::new(&mut p.PA12, Level::Low, Speed::Low);
-        Timer::after_millis(10).await;
-    }
-
-    // Create the driver, from the HAL.
-    let driver = usb::Driver::new(p.USB, Irqs, p.PA12, p.PA11);
-
-    // Create embassy-usb Config
-    let usb_config = get_usb_config("bluepill-servo");
-
     let mut servo_config = ServoConfig::default();
     servo_config.servo_frequency = SERVO_FREQ.0;
     servo_config.max_duty_cycle = max_duty_cycle as u16;
@@ -124,10 +105,22 @@ async fn main(spawner: Spawner) {
         servo_config.channels[i].enabled = false;
     }
 
+    // Prepare the context for the application.
     let context = Context {
         config: servo_config,
         pwm,
     };
+
+    /********************************** USB **********************************/
+    reset_condition(&mut p.PA12).await;
+
+    // Create the driver, from the HAL.
+    let driver = usb::Driver::new(p.USB, Irqs, p.PA12, p.PA11);
+
+    // Create embassy-usb Config
+    let usb_config = get_usb_config("bluepill-servo");
+
+    let pbufs = PBUFS.take();
     let (device, tx_impl, rx_impl) = STORAGE.init(driver, usb_config, pbufs.tx_buf.as_mut_slice());
     let dispatcher = ServoApp::new(context, spawner.into());
     let vkk = dispatcher.min_key_len();

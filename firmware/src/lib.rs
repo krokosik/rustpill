@@ -1,8 +1,15 @@
 #![no_std]
 #![no_main]
 
-use embassy_stm32::{Config, peripherals, time::Hertz, usb};
+use embassy_stm32::{
+    Config, Peripheral,
+    gpio::{Level, Output, Speed},
+    peripherals,
+    time::Hertz,
+    usb::{self, DpPin, Instance},
+};
 use embassy_sync::blocking_mutex::raw::ThreadModeRawMutex;
+use embassy_time::Timer;
 use embassy_usb::UsbDevice;
 use postcard_rpc::server::impls::embassy_usb_v0_4::{
     PacketBuffers,
@@ -35,6 +42,15 @@ pub fn enable_usb_clock(config: &mut Config) {
     config.rcc.ahb_pre = AHBPrescaler::DIV1;
     config.rcc.apb1_pre = APBPrescaler::DIV2;
     config.rcc.apb2_pre = APBPrescaler::DIV1;
+}
+
+pub async fn reset_condition<T: Instance>(dplus_pin: &mut impl Peripheral<P = impl DpPin<T>>) {
+    // BluePill board has a pull-up resistor on the D+ line.
+    // Pull the D+ pin down to send a RESET condition to the USB bus.
+    // This forced reset is needed only for development, without it host
+    // will not reset your device when you upload new firmware.
+    let _dp = Output::new(dplus_pin, Level::Low, Speed::Low);
+    Timer::after_millis(10).await;
 }
 
 pub fn get_usb_config(product_name: &'static str) -> embassy_usb::Config<'static> {
