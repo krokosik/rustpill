@@ -21,13 +21,7 @@ use postcard_rpc::{
         impls::embassy_usb_v0_4::dispatch_impl::{WireRxBuf, WireSpawnImpl},
     },
 };
-use protocol::{
-    servo::{
-        ConfigureChannel, GetServoConfig, GetUniqueIdEndpoint, SERVO_ENDPOINT_LIST,
-        ServoChannelConfig, ServoConfig, SetFrequencyEndpoint, TOPICS_IN_LIST, TOPICS_OUT_LIST,
-    },
-    utils::PwmChannel,
-};
+use protocol::{servo::*, utils::PwmChannel};
 use {defmt_rtt as _, panic_probe as _};
 
 use firmware::*;
@@ -37,7 +31,7 @@ struct Context {
     config: ServoConfig,
 }
 
-type AppServer = Server<AppTx, AppRx, WireRxBuf, ServoApp>;
+type AppServer = Server<AppTx, AppRx, WireRxBuf, App>;
 
 const SERVO_FREQ: Hertz = Hertz(50);
 const SERVO_MIN_US: u32 = 500;
@@ -49,7 +43,7 @@ bind_interrupts!(struct Irqs {
 });
 
 define_dispatch! {
-    app: ServoApp;
+    app: App;
     spawn_fn: spawn_fn;
     tx_impl: AppTx;
     spawn_impl: WireSpawnImpl;
@@ -125,9 +119,9 @@ async fn main(spawner: Spawner) {
 
     let pbufs = PBUFS.take();
     let (device, tx_impl, rx_impl) = STORAGE.init(driver, usb_config, pbufs.tx_buf.as_mut_slice());
-    let dispatcher = ServoApp::new(context, spawner.into());
+    let dispatcher = App::new(context, spawner.into());
     let vkk = dispatcher.min_key_len();
-    let server: AppServer = Server::new(
+    let server = AppServer::new(
         tx_impl,
         rx_impl,
         pbufs.rx_buf.as_mut_slice(),
