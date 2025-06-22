@@ -82,7 +82,7 @@ pub async fn connect_to_board(
 }
 
 #[derive(Debug)]
-pub enum BoardError<E: Debug> {
+pub enum BoardError<E: Debug = Infallible> {
     Comms(HostErr<WireError>),
     Protocol(SchemaError<WireError>),
     #[allow(dead_code)]
@@ -120,3 +120,5 @@ impl<E: Debug> Into<PyErr> for BoardError<E> {
         }
     }
 }
+
+pub type BoardResult<T, E = Infallible> = Result<T, BoardError<E>>;
