@@ -22,8 +22,11 @@ use postcard_rpc::{
     },
 };
 use protocol::{
-    ConfigureChannel, GetServoConfig, GetUniqueIdEndpoint, PwmChannel, SERVO_ENDPOINT_LIST,
-    ServoChannelConfig, ServoConfig, SetFrequencyEndpoint, TOPICS_IN_LIST, TOPICS_OUT_LIST,
+    servo::{
+        ConfigureChannel, GetServoConfig, GetUniqueIdEndpoint, SERVO_ENDPOINT_LIST,
+        ServoChannelConfig, ServoConfig, SetFrequencyEndpoint, TOPICS_IN_LIST, TOPICS_OUT_LIST,
+    },
+    utils::PwmChannel,
 };
 use {defmt_rtt as _, panic_probe as _};
 

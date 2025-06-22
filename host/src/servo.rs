@@ -1,6 +1,9 @@
 use macros::blocking_async;
 use postcard_rpc::{host_client::HostClient, standard_icd::WireError};
-use protocol::{GetUniqueIdEndpoint, PwmChannel, ServoConfig};
+use protocol::{
+    servo::{GetUniqueIdEndpoint, ServoConfig},
+    utils::PwmChannel,
+};
 use pyo3::prelude::*;
 use pyo3_stub_gen::derive::*;
 use std::convert::Infallible;
@@ -32,7 +35,9 @@ impl ServoClient {
     async fn new(serial_number: Option<&str>) -> Result<Self, BoardError<Infallible>> {
         let client = connect_to_board(serial_number).await?;
 
-        let config = client.send_resp::<protocol::GetServoConfig>(&()).await?;
+        let config = client
+            .send_resp::<protocol::servo::GetServoConfig>(&())
+            .await?;
         log::info!("Servo config: {:?}", config);
 
         Ok(Self { client, config })
@@ -151,7 +156,7 @@ impl ServoClient {
         let channel_config = channel_config.clone();
 
         self.client
-            .send_resp::<protocol::ConfigureChannel>(&((channel, channel_config)))
+            .send_resp::<protocol::servo::ConfigureChannel>(&((channel, channel_config)))
             .await?;
         Ok(())
     }
@@ -162,7 +167,7 @@ impl ServoClient {
     async fn update_config(&mut self) -> Result<(), BoardError<Infallible>> {
         let config = self
             .client
-            .send_resp::<protocol::GetServoConfig>(&())
+            .send_resp::<protocol::servo::GetServoConfig>(&())
             .await?;
         self.config = config;
         Ok(())
@@ -176,7 +181,7 @@ impl ServoClient {
     /// :param frequency: The frequency to set in Hz.
     async fn set_frequency(&mut self, frequency: u32) -> Result<(), BoardError<Infallible>> {
         self.client
-            .send_resp::<protocol::SetFrequencyEndpoint>(&frequency)
+            .send_resp::<protocol::servo::SetFrequencyEndpoint>(&frequency)
             .await?;
         self.update_config()
     }
