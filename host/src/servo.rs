@@ -71,9 +71,7 @@ impl ServoClient {
     /// :param channel: The channel to set the servo on (1-4), corresponding to PWM channels on pins PB6-PB9.
     /// :param angle: The angle to set the servo to (0-180).
     fn set_angle(&mut self, channel: u8, angle: u8) -> BoardResult<()> {
-        if channel < 1 || channel > 4 {
-            return Err(BoardError::InvalidData("Invalid channel".to_string()));
-        }
+        PwmChannel::try_from(channel)?;
         if angle > 180 {
             return Err(BoardError::InvalidData("Invalid angle".to_string()));
         }
@@ -98,8 +96,7 @@ impl ServoClient {
     ///
     /// :return: The angle of the servo (0-180).
     fn get_angle(&self, channel: u8) -> BoardResult<u8> {
-        let channel = PwmChannel::try_from(channel)
-            .map_err(|_| BoardError::InvalidData("Invalid channel".to_string()))?;
+        let channel = PwmChannel::try_from(channel)?;
 
         let channel_config = &self.config.channels[channel as usize];
         let angle = self.duty_cycle_to_angle(
@@ -135,8 +132,7 @@ impl ServoClient {
         min_angle_duty_cycle: Option<u16>,
         max_angle_duty_cycle: Option<u16>,
     ) -> BoardResult<()> {
-        let channel = PwmChannel::try_from(channel)
-            .map_err(|_| BoardError::InvalidData("Invalid channel".to_string()))?;
+        let channel = PwmChannel::try_from(channel)?;
         let channel_config = &mut self.config.channels[channel as usize];
 
         channel_config.enabled = enabled.unwrap_or(channel_config.enabled);

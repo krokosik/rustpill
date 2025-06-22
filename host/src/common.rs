@@ -121,4 +121,10 @@ impl<E: Debug> Into<PyErr> for BoardError<E> {
     }
 }
 
+impl<E: Debug> From<u8> for BoardError<E> {
+    fn from(value: u8) -> Self {
+        BoardError::InvalidData(format!("PWM channel {} out of 1-4 range", value))
+    }
+}
+
 pub type BoardResult<T, E = Infallible> = Result<T, BoardError<E>>;
