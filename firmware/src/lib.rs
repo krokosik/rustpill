@@ -41,7 +41,7 @@ pub fn get_usb_config(product_name: &'static str) -> embassy_usb::Config<'static
     let mut config = embassy_usb::Config::new(0xc0de, 0xcafe);
     config.manufacturer = Some("QOD Lab");
     config.product = Some(product_name);
-    config.serial_number = Some(str::from_utf8(embassy_stm32::uid::uid()).unwrap());
+    config.serial_number = Some(embassy_stm32::uid::uid_hex());
 
     let version_bcd = 0
         + (env!("CARGO_PKG_VERSION_MAJOR").parse::<u16>().unwrap() << 8)
