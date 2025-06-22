@@ -1,6 +1,6 @@
 use macros::blocking_async;
 use postcard_rpc::{host_client::HostClient, standard_icd::WireError};
-use protocol::GetUniqueIdEndpoint;
+use protocol::{GetAdcValEndpoint, GetUniqueIdEndpoint};
 use pyo3::prelude::*;
 use pyo3_stub_gen::derive::*;
 use std::convert::Infallible;
@@ -60,6 +60,11 @@ impl Client {
         let mut padded_id = [0u8; 16];
         padded_id[..12].copy_from_slice(&id);
         Ok(u128::from_le_bytes(padded_id))
+    }
+
+    async fn get_adc_val(&self) -> Result<u16, BoardError<Infallible>> {
+        let val = self.client.send_resp::<GetAdcValEndpoint>(&()).await?;
+        Ok(val)
     }
 }
 //END FUNCTIONS FOR PYTHON CLIENT
