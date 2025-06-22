@@ -83,14 +83,10 @@ async fn main(spawner: Spawner) {
     let pbufs = PBUFS.take();
 
     /********************************** START ADC **********************************/
-    let hadc = Adc::new(p.ADC1);
-    let adc_pin0 = p.PA0;
-    // let adc_val = hadc.read(&mut adc_pin0).await; //test
     let context = Context {
-        adc: hadc,
-        adc_pin: adc_pin0,
+        adc: Adc::new(p.ADC1),
+        adc_pin: p.PA0,
     };
-    // let context = Context {};
     /********************************** END ADC **********************************/
     /********************************** USB **********************************/
     {
@@ -146,6 +142,6 @@ fn unique_id_handler(_context: &mut Context, _header: VarHeader, _rqst: ()) -> [
 }
 
 fn get_adc_val(context: &mut Context, _header: VarHeader, _rqst: ()) -> u16 {
-    block_on(context.adc.read(&mut context.adc_pin)) //test
+    block_on(context.adc.read(&mut context.adc_pin))
 }
 //END FUNCTIONS FOR ENDPOINTS
