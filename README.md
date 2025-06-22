@@ -12,6 +12,8 @@ This is a WIP implementation/exploration of using modern Rust technologies for m
 
 Other interesting resources:
 - [Bluepill HAL docs](https://docs.embassy.dev/embassy-stm32/git/stm32f103c8/index.html)
+- [Bluepill PAC docs](https://docs.embassy.dev/stm32-metapac/git/stm32f103c8/index.html)
+- [Bluepill datasheet](https://www.st.com/resource/en/datasheet/stm32f103c8.pdf)
 - [Workbook for Embedded Workshops](https://embedded-trainings.ferrous-systems.com/preparations)
 - [The Embedonomicon](https://docs.rust-embedded.org/embedonomicon/preface.html)
 
