@@ -66,6 +66,14 @@ Install the `probe-rs` VS Code extension and set breakpoints in the code. Go to 
 There are some issues to be ironed out in the config or the tool itself though:
 - https://github.com/probe-rs/probe-rs/issues/3045
 
+If you want to play with raw binaries (for example use the ST-Link companion software or analyze size), you can use some custom utilities from [cargo-binutils](https://github.com/rust-embedded/cargo-binutils):
+```shell
+# Install needed only once
+cargo install cargo-binutils
+# Example commands include size, nm, objdump, strip...
+cargo <cmd> -p firmware --bin <binary> --release
+```
+
 ## Wishlist
 
 - expand the firmware and port more Cube code
