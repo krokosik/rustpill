@@ -41,7 +41,7 @@ use firmware::*;
 struct Context {
     pwm: SimplePwm<'static, peripherals::TIM4>, // Using TIM1 for PWM
     dir: Output<'static>,
-    dma: peripherals::DMA1_CH7, // Specify the GPIO pin type explicitly
+    dma: peripherals::DMA1_CH1, // Specify the GPIO pin type explicitly
 }
 
 type AppServer = Server<AppTx, AppRx, WireRxBuf, App>;
@@ -125,7 +125,7 @@ async fn main(spawner: Spawner) {
     // Create embassy-usb Config
     let usb_config = get_usb_config("bluepill-servo");
 
-    let dma1 = p.DMA1_CH7;
+    let dma1 = p.DMA1_CH1;
 
     let context = Context {
         pwm,
@@ -188,7 +188,7 @@ async fn set_stepper_handler(context: &mut Context, _header: VarHeader, rqst: u1
         // context.pwm.ch1().set_duty_cycle(max_duty);
         context
             .pwm
-            .waveform_up(&mut context.dma, timer::Channel::Ch1, &[max_duty])
+            .waveform_ch1(&mut context.dma, &[max_duty])
             .await;
     }
     // context
