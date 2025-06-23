@@ -172,7 +172,7 @@ fn unique_id_handler(_context: &mut Context, _header: VarHeader, _rqst: ()) -> [
 async fn set_stepper_handler(context: &mut Context, _header: VarHeader, rqst: u16) -> () {
     defmt::info!("set_stepper: {}", rqst);
     let max_duty = context.pwm.max_duty_cycle() / 2;
-    context.pwm.ch1().set_duty_cycle(max_duty / 2);
+    context.pwm.ch1().set_duty_cycle(max_duty);
 
     context.pwm.ch1().enable();
     for _ in 0..rqst {
