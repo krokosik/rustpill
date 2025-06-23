@@ -10,15 +10,13 @@ use pyo3::prelude::*;
 use pyo3_stub_gen::derive::*;
 
 endpoints! {
-    list = SERVO_ENDPOINT_LIST;
+    list = STEPPER_ENDPOINTS_LIST;
     omit_std = true;
     | EndpointTy                | RequestTy                            | ResponseTy            | Path              |
     | ----------                | ---------                            | ----------            | ----              |
     | GetUniqueIdEndpoint       | ()                                   | [u8; 12]              | "unique_id/get"   |
-    | ConfigureChannel          | (PwmChannel, ServoChannelConfig)     | ()                    | "servo/channel"   |
-    | GetServoConfig            | ()                                   | ServoConfig           | "servo/config"    |
-    | SetFrequencyEndpoint      | u32                                  | ()                    | "servo/frequency" |
     | SetStepperEndpoint        | u32                                  | ()                    | "stepper/config"  |
+    | SetDirectionEndpoint      | u8                                   | ()                    | "stepper/direction" |
 }
 
 topics! {
@@ -55,23 +53,6 @@ impl TryFrom<u8> for PwmChannel {
             _ => Err(value),
         }
     }
-}
-
-#[cfg_attr(feature = "use-std", gen_stub_pyclass, pyclass(get_all, set_all))]
-#[derive(Serialize, Deserialize, Schema, Debug, Default, PartialEq, Clone)]
-pub struct ServoChannelConfig {
-    pub min_angle_duty_cycle: u16,
-    pub max_angle_duty_cycle: u16,
-    pub current_duty_cycle: u16,
-    pub enabled: bool,
-}
-
-#[cfg_attr(feature = "use-std", gen_stub_pyclass, pyclass(get_all, set_all))]
-#[derive(Serialize, Deserialize, Schema, Debug, Default, PartialEq, Clone)]
-pub struct ServoConfig {
-    pub servo_frequency: u32,
-    pub max_duty_cycle: u16,
-    pub channels: [ServoChannelConfig; 4],
 }
 
 #[cfg_attr(feature = "use-std", gen_stub_pyclass, pyclass(get_all, set_all))]
