@@ -3,17 +3,12 @@
 
 use embassy_executor::Spawner;
 use embassy_stm32::{
-    Config, bind_interrupts,
-    gpio::{Level, Output, OutputType, Speed},
-    peripherals,
-    time::Hertz,
-    timer::{
+    bind_interrupts, gpio::{Level, Output, OutputType, Speed}, peripherals, Peripherals, time::Hertz, timer::{
         self,
         simple_pwm::{PwmPin, SimplePwm, SimplePwmChannel},
-    },
-    usb,
+    }, usb, Config
 };
-use embassy_time::{Duration, Timer};
+use embassy_time::{Duration, Ticker, Timer};
 use postcard_rpc::{
     define_dispatch,
     header::VarHeader,
@@ -34,6 +29,7 @@ use firmware::*;
 struct Context {
     pwm: SimplePwm<'static, peripherals::TIM4>, // Possibly expand to more timers in the future
     config: ServoConfig,
+    p: Peripherals.DMA1_CH2
 }
 
 type AppServer = Server<AppTx, AppRx, WireRxBuf, ServoApp>;
@@ -129,6 +125,7 @@ async fn main(spawner: Spawner) {
     let context = Context {
         config: stepper_config,
         pwm,
+        p.DMA1_CH2.reborrow(),
     };
     let (device, tx_impl, rx_impl) = STORAGE.init(driver, usb_config, pbufs.tx_buf.as_mut_slice());
     let dispatcher = ServoApp::new(context, spawner.into());
@@ -229,22 +226,26 @@ async fn set_stepper_handler(context: &mut Context, _header: VarHeader, rqst: u3
     context
         .pwm
         .ch1()
-        .set_duty_cycle(context.config.max_duty_cycle / 2);
+        .set_duty_cycle(context.config.max_duty_cycle / 4);
 
+    let mut ticker = Ticker::every(Duration::from_millis(5));
     // rqst as u64;
-    context.pwm.ch1().enable();
-    Timer::after(Duration::from_millis(
-        (rqst / context.config.servo_frequency).into(),
-    ))
-    .await;
-    context.pwm.ch1().disable();
-    // for i in 0..rqst {
-    //     defmt::info!("Stepper step {}", i);
-    //     // context.pwm.ch1().set_duty_cycle(1000); // Example duty cycle
-    //     context.pwm.ch1().enable();
-    //     Timer::after(Duration::from_millis(1)).await; // Simulate step duration
-    //     context.pwm.ch1().disable();
-    //     Timer::after(Duration::from_millis(1)).await;
-    //     // ticker.next().await;
-    // }
+    // context.pwm.ch1().enable();
+    // Timer::after(Duration::from_millis(rqst.into())).await;
+    // context.pwm.ch1().disable();
+    for i in 0..rqst {
+        defmt::info!("Stepper step {}", i);
+        context.pwm
+            .waveform_up(
+                .DMA1_CH2.reborrow(),
+                context.pwm.ch1(),
+                context.config.max_duty_cycle / 4,
+            )
+            .await;
+        // ws2812 need at least 50 us low level input to confirm the input data and change it's state
+        Timer::after_micros(50).await;
+        // wait until ticker tick
+        ticker.next().await;
+        // ticker.next().await;
+    }
 }
