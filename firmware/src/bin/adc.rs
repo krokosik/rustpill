@@ -8,8 +8,13 @@ use embassy_stm32::{
     Config,
     adc::Adc,
     bind_interrupts,
-    gpio::{Level, Output, Speed},
+    gpio::{Level, Output, OutputType, Speed},
     peripherals::{self, PA0},
+    time::Hertz,
+    timer::{
+        self,
+        simple_pwm::{PwmPin, SimplePwm},
+    },
     usb,
 };
 use embassy_time::Timer;
@@ -35,6 +40,7 @@ use firmware::*;
 struct Context {
     adc: Adc<'static, peripherals::ADC1>,
     adc_pin: PA0,
+    heater_pwm: SimplePwm<'static, peripherals::TIM2>,
 }
 
 type AppServer = Server<AppTx, AppRx, WireRxBuf, App>;
@@ -52,7 +58,7 @@ define_dispatch! {
         | EndpointTy                | kind      | handler                       |
         | ----------                | ----      | -------                       |
         | GetUniqueIdEndpoint       | blocking  | unique_id_handler             |
-        | GetAdcValEndpoint         | blocking  | get_adc_val                   |
+        | GetAdcValEndpoint         | blocking  | set_pwm_duty_adc              |
     };
     topics_in: {
         list: TOPICS_IN_LIST;
@@ -82,12 +88,21 @@ async fn main(spawner: Spawner) {
 
     let pbufs = PBUFS.take();
 
-    /********************************** START ADC **********************************/
+    /********************************** START ADC, PWM **********************************/
     let context = Context {
         adc: Adc::new(p.ADC1),
         adc_pin: p.PA0,
+        heater_pwm: SimplePwm::new(
+            p.TIM2,
+            None,
+            Some(PwmPin::new_ch2(p.PA1, OutputType::PushPull)),
+            None,
+            None,
+            Hertz(60),
+            timer::low_level::CountingMode::EdgeAlignedUp,
+        ),
     };
-    /********************************** END ADC **********************************/
+    /********************************** END ADC, PWM **********************************/
     /********************************** USB **********************************/
     {
         // BluePill board has a pull-up resistor on the D+ line.
@@ -141,7 +156,12 @@ fn unique_id_handler(_context: &mut Context, _header: VarHeader, _rqst: ()) -> [
     *embassy_stm32::uid::uid()
 }
 
-fn get_adc_val(context: &mut Context, _header: VarHeader, _rqst: ()) -> u16 {
-    block_on(context.adc.read(&mut context.adc_pin))
+fn set_pwm_duty_adc(context: &mut Context, _header: VarHeader, _rqst: ()) -> u16 {
+    let adcval = block_on(context.adc.read(&mut context.adc_pin));
+    context
+        .heater_pwm
+        .ch2()
+        .set_duty_cycle_fraction(adcval, 1 << 14);
+    adcval
 }
 //END FUNCTIONS FOR ENDPOINTS
