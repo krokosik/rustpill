@@ -21,7 +21,7 @@ use postcard_rpc::{
         impls::embassy_usb_v0_4::dispatch_impl::{WireRxBuf, WireSpawnImpl},
     },
 };
-use protocol::{
+use protocol::adc::{
     ENDPOINT_LIST, GetAdcValEndpoint, GetUniqueIdEndpoint, TOPICS_IN_LIST, TOPICS_OUT_LIST,
 };
 
