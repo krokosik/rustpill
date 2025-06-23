@@ -173,46 +173,19 @@ async fn set_stepper_handler(context: &mut Context, _header: VarHeader, rqst: u1
     defmt::info!("set_stepper: {}", rqst);
     let max_duty = context.pwm.max_duty_cycle() / 2;
     context.pwm.ch1().set_duty_cycle(max_duty / 2);
-    // let mut buf: Vec<u16, MAX_STEP_SIZE> = Vec::new();
-
-    // for _ in 0..rqst {
-    //     // Fill the buffer with the max duty cycle value
-    //     // This is a placeholder, you would replace this with your actual step values
-    //     buf.push(max_duty).unwrap();
-    // }
 
     context.pwm.ch1().enable();
     for _ in 0..rqst {
-        // Here you would implement the logic to set the stepper configuration
-        // For example, you might want to set the duty cycle based on the step value
-        // context.pwm.ch1().set_duty_cycle(max_duty);
         context
             .pwm
             .waveform_ch1(&mut context.dma, &[max_duty])
             .await;
     }
-    // context
-    //     .pwm
-    //     .waveform_up(&mut context.dma, timer::Channel::Ch1, &buf)
-    //     .await;
+
     context.pwm.ch1().disable();
-    // let mut ticker = Ticker::every(embassy_time::Duration::from_hz(500));
-    // for _ in 0..rqst {
-    //     context
-    //         .pwm
-    //         .waveform_ch1(&mut context.dma, &[max_duty])
-    //         .await;
-
-    //     // Timer::after_micros(50).await;
-
-    //     ticker.next().await;
-    // }
-    // context.pwm.ch1().disable();
-    // Here you would implement the logic to set the stepper configuration
 }
 
 fn set_direction_handler(context: &mut Context, _header: VarHeader, rqst: u8) -> () {
-    // Assuming rqst is a direction value, e.g., 0 for one direction and 1 for the other
     if rqst == 0 {
         context.dir.set_low();
     } else if rqst == 1 {
@@ -222,7 +195,6 @@ fn set_direction_handler(context: &mut Context, _header: VarHeader, rqst: u8) ->
         return;
     }
     defmt::info!("set_direction: {}", rqst);
-    // Here you would implement the logic to set the stepper direction
 }
 
 //END FUNCTIONS FOR ENDPOINTS
