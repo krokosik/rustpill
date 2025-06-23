@@ -1,8 +1,8 @@
 # %%
-from rustpill_clients import ServoClient
+from rustpill_clients import Client
 
 # ServoClient.flash()
-servo = ServoClient()
+servo = Client()
 # %%
 if False:  # big servo
     servo.configure_channel(
