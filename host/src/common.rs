@@ -35,7 +35,7 @@ pub async fn connect_to_board(
                     .serial_number()
                     .and_then(|sn| {
                         let mut padded_id = [0u8; 16];
-                        padded_id[..12].copy_from_slice(&sn.as_bytes());
+                        padded_id[..12].copy_from_slice(&sn.as_bytes()[..12]);
                         Some(u128::from_le_bytes(padded_id))
                     })
                     .unwrap_or(0);
