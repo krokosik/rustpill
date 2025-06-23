@@ -4,7 +4,9 @@
 //START IMPORTS
 use embassy_executor::Spawner;
 use embassy_stm32::{
-    Config, bind_interrupts,
+    Config,
+    adc::RxDma,
+    bind_interrupts,
     gpio::{Level, Output, OutputType, Speed},
     peripherals,
     time::Hertz,
@@ -15,6 +17,7 @@ use embassy_stm32::{
     usb,
 };
 use embassy_time::{Ticker, Timer};
+use heapless::Vec;
 use postcard_rpc::{
     define_dispatch,
     header::VarHeader,
@@ -27,6 +30,7 @@ use protocol::{
     GetUniqueIdEndpoint, STEPPER_ENDPOINTS_LIST, SetDirectionEndpoint, SetStepperEndpoint,
     TOPICS_IN_LIST, TOPICS_OUT_LIST,
 };
+// use std::vec::Vec;
 
 use {defmt_rtt as _, panic_probe as _};
 
@@ -37,7 +41,7 @@ use firmware::*;
 struct Context {
     pwm: SimplePwm<'static, peripherals::TIM4>, // Using TIM1 for PWM
     dir: Output<'static>,
-    dma: peripherals::DMA1_CH1, // Specify the GPIO pin type explicitly
+    dma: peripherals::DMA1_CH7, // Specify the GPIO pin type explicitly
 }
 
 type AppServer = Server<AppTx, AppRx, WireRxBuf, App>;
@@ -72,12 +76,15 @@ define_dispatch! {
 
 const STEPPER_FREQ: Hertz = Hertz(500);
 
+const MAX_STEP_SIZE: usize = 2 ^ 16; // Maximum number of steps to send in one go
+
 //binding interrupt functions
 bind_interrupts!(struct Irqs {
     TIM4 => timer::CaptureCompareInterruptHandler<peripherals::TIM4>;
     USB_LP_CAN1_RX0 => usb::InterruptHandler<peripherals::USB>;
 });
 //first function of programme
+
 #[embassy_executor::main]
 async fn main(spawner: Spawner) {
     //config with clocks
@@ -118,7 +125,7 @@ async fn main(spawner: Spawner) {
     // Create embassy-usb Config
     let usb_config = get_usb_config("bluepill-servo");
 
-    let dma1 = p.DMA1_CH1;
+    let dma1 = p.DMA1_CH7;
 
     let context = Context {
         pwm,
@@ -162,24 +169,45 @@ fn unique_id_handler(_context: &mut Context, _header: VarHeader, _rqst: ()) -> [
     *embassy_stm32::uid::uid()
 }
 
-async fn set_stepper_handler(context: &mut Context, _header: VarHeader, rqst: u32) -> () {
+async fn set_stepper_handler(context: &mut Context, _header: VarHeader, rqst: u16) -> () {
     defmt::info!("set_stepper: {}", rqst);
     let max_duty = context.pwm.max_duty_cycle() / 2;
     context.pwm.ch1().set_duty_cycle(max_duty / 2);
-    context.pwm.ch1().enable();
+    // let mut buf: Vec<u16, MAX_STEP_SIZE> = Vec::new();
 
-    let mut ticker = Ticker::every(embassy_time::Duration::from_hz(500));
+    // for _ in 0..rqst {
+    //     // Fill the buffer with the max duty cycle value
+    //     // This is a placeholder, you would replace this with your actual step values
+    //     buf.push(max_duty).unwrap();
+    // }
+
+    context.pwm.ch1().enable();
     for _ in 0..rqst {
+        // Here you would implement the logic to set the stepper configuration
+        // For example, you might want to set the duty cycle based on the step value
+        // context.pwm.ch1().set_duty_cycle(max_duty);
         context
             .pwm
-            .waveform_ch1(&mut context.dma, &[max_duty])
+            .waveform_up(&mut context.dma, timer::Channel::Ch1, &[max_duty])
             .await;
-
-        // Timer::after_micros(50).await;
-
-        ticker.next().await;
     }
+    // context
+    //     .pwm
+    //     .waveform_up(&mut context.dma, timer::Channel::Ch1, &buf)
+    //     .await;
     context.pwm.ch1().disable();
+    // let mut ticker = Ticker::every(embassy_time::Duration::from_hz(500));
+    // for _ in 0..rqst {
+    //     context
+    //         .pwm
+    //         .waveform_ch1(&mut context.dma, &[max_duty])
+    //         .await;
+
+    //     // Timer::after_micros(50).await;
+
+    //     ticker.next().await;
+    // }
+    // context.pwm.ch1().disable();
     // Here you would implement the logic to set the stepper configuration
 }
 

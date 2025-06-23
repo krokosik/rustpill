@@ -15,7 +15,7 @@ endpoints! {
     | EndpointTy                | RequestTy                            | ResponseTy            | Path              |
     | ----------                | ---------                            | ----------            | ----              |
     | GetUniqueIdEndpoint       | ()                                   | [u8; 12]              | "unique_id/get"   |
-    | SetStepperEndpoint        | u32                                  | ()                    | "stepper/config"  |
+    | SetStepperEndpoint        | u16                                  | ()                    | "stepper/config"  |
     | SetDirectionEndpoint      | u8                                   | ()                    | "stepper/direction" |
 }
 

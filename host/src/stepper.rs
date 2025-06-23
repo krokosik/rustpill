@@ -62,7 +62,7 @@ impl StepperClient {
         Ok(u128::from_le_bytes(padded_id))
     }
 
-    async fn move_stepper(&self, steps: u32) -> Result<(), BoardError<Infallible>> {
+    async fn move_stepper(&self, steps: u16) -> Result<(), BoardError<Infallible>> {
         self.client.send_resp::<SetStepperEndpoint>(&steps).await?;
         Ok(())
     }
