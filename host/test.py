@@ -5,3 +5,5 @@ from rustpill_clients import Client
 adc = Client()
 #%%
 adc.get_adc_val()
+#%%
+adc.get_serial_number()

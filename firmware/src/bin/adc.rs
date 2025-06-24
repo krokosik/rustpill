@@ -26,9 +26,8 @@ use postcard_rpc::{
         impls::embassy_usb_v0_4::dispatch_impl::{WireRxBuf, WireSpawnImpl},
     },
 };
-use protocol::adc::{
-    ENDPOINT_LIST, GetAdcValEndpoint, GetUniqueIdEndpoint, TOPICS_IN_LIST, TOPICS_OUT_LIST,
-};
+
+use protocol::adc::*;
 
 use {defmt_rtt as _, panic_probe as _};
 
@@ -41,6 +40,7 @@ struct Context {
     adc: Adc<'static, peripherals::ADC1>,
     adc_pin: PA0,
     heater_pwm: SimplePwm<'static, peripherals::TIM2>,
+    pidvals: Pidvals,
 }
 
 type AppServer = Server<AppTx, AppRx, WireRxBuf, App>;
@@ -58,7 +58,12 @@ define_dispatch! {
         | EndpointTy                | kind      | handler                       |
         | ----------                | ----      | -------                       |
         | GetUniqueIdEndpoint       | blocking  | unique_id_handler             |
-        | GetAdcValEndpoint         | blocking  | set_pwm_duty_adc              |
+        | SetPWMDutyEndpoint        | blocking  | set_pwm_duty                  |
+        | GetPidvalsEndpoint        | blocking  | get_pidvals                   |
+        | HeaterDisableEndpoint     | blocking  | heater_disable                |
+        | HeaterEnableEndpoint      | blocking  | heater_enable                 |
+        | SetPidConstsEndpoint      | blocking  | pid_set_const                 |
+        | PidResetEndpoint          | blocking  | pid_reset                     |
     };
     topics_in: {
         list: TOPICS_IN_LIST;
@@ -89,6 +94,19 @@ async fn main(spawner: Spawner) {
     let pbufs = PBUFS.take();
 
     /********************************** START ADC, PWM **********************************/
+    let pidvals = Pidvals {
+        setpoint: 0,
+        adc_val: 0,
+        error_val: 0,
+        err_corr: 0.,
+        kp: 0.,
+        ki: 0.,
+        dt: 1,
+        prev_clk: embassy_time::Instant::now().as_ticks(),
+        is_on: false,
+        max_int_val: 100.,
+        int_sum: 0.,
+    };
     let context = Context {
         adc: Adc::new(p.ADC1),
         adc_pin: p.PA0,
@@ -101,7 +119,10 @@ async fn main(spawner: Spawner) {
             Hertz(60),
             timer::low_level::CountingMode::EdgeAlignedUp,
         ),
+        pidvals: pidvals,
     };
+    // context.heater_pwm.ch2().enable(); // for testing
+    // context.heater_pwm.ch2().set_duty_cycle_percent(50);
     /********************************** END ADC, PWM **********************************/
     /********************************** USB **********************************/
     {
@@ -156,12 +177,58 @@ fn unique_id_handler(_context: &mut Context, _header: VarHeader, _rqst: ()) -> [
     *embassy_stm32::uid::uid()
 }
 
-fn set_pwm_duty_adc(context: &mut Context, _header: VarHeader, _rqst: ()) -> u16 {
-    let adcval = block_on(context.adc.read(&mut context.adc_pin));
-    context
-        .heater_pwm
-        .ch2()
-        .set_duty_cycle_fraction(adcval, 1 << 14);
-    adcval
+fn set_pwm_duty(context: &mut Context, _header: VarHeader, rqst: u16) -> () {
+    //todo arg duty
+    context.heater_pwm.ch2().set_duty_cycle_fraction(rqst, 1000);
 }
+fn pid_reset(context: &mut Context, _header: VarHeader, _rqst: ()) -> () {
+    context.pidvals.prev_clk = embassy_time::Instant::now().as_ticks();
+    context.pidvals.int_sum = 0.;
+}
+fn pid_set_const(context: &mut Context, _header: VarHeader, rqst: [f32; 2]) -> () {
+    context.pidvals.kp = rqst[0];
+    context.pidvals.ki = rqst[1];
+}
+
+fn heater_enable(context: &mut Context, _header: VarHeader, _rqst: ()) -> () {
+    context.heater_pwm.ch2().enable();
+}
+fn heater_disable(context: &mut Context, _header: VarHeader, _rqst: ()) -> () {
+    context.heater_pwm.ch2().disable();
+}
+
+fn recalc_pi(context: &mut Context, _header: VarHeader, _rqst: ()) -> () {
+    context.pidvals.adc_val = block_on(context.adc.read(&mut context.adc_pin));
+    let now = embassy_time::Instant::now().as_ticks();
+    context.pidvals.dt = now.wrapping_sub(context.pidvals.prev_clk);
+    context.pidvals.prev_clk = now;
+
+    context.pidvals.error_val =
+        (context.pidvals.adc_val as i16) - (context.pidvals.setpoint as i16);
+
+    context.pidvals.int_sum += context.pidvals.kp * context.pidvals.error_val as f32;
+    if context.pidvals.int_sum > context.pidvals.max_int_val {
+        context.pidvals.int_sum = context.pidvals.max_int_val;
+    } else if context.pidvals.int_sum < -context.pidvals.max_int_val {
+        context.pidvals.int_sum = -context.pidvals.max_int_val;
+    }
+
+    context.pidvals.err_corr =
+        context.pidvals.kp * (context.pidvals.error_val as f32) + context.pidvals.int_sum;
+    if context.pidvals.err_corr < 0. {
+        context.heater_pwm.ch2().set_duty_cycle(0);
+    } else if context.pidvals.err_corr > 1000. {
+        context.heater_pwm.ch2().set_duty_cycle_fully_on();
+    } else {
+        context
+            .heater_pwm
+            .ch2()
+            .set_duty_cycle_fraction(context.pidvals.err_corr as u16, 1000);
+    }
+}
+
+fn get_pidvals(context: &mut Context, _header: VarHeader, _rqst: ()) -> Pidvals {
+    context.pidvals.clone()
+}
+
 //END FUNCTIONS FOR ENDPOINTS
