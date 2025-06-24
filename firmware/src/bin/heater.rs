@@ -27,7 +27,7 @@ use postcard_rpc::{
     },
 };
 
-use protocol::adc::*;
+use protocol::heater::*;
 
 use {defmt_rtt as _, panic_probe as _};
 

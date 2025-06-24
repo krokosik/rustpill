@@ -1,10 +1,10 @@
 use pyo3::{ffi::c_str, prelude::*};
 
-mod adc;
 mod common;
 mod flash;
+mod heater;
 
-use adc::Client;
+use heater::Client;
 use pyo3_stub_gen::define_stub_info_gatherer;
 
 /// This module hosts Python wrappers for communicating with Bluepill Rust firmware.
