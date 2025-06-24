@@ -1,3 +1,5 @@
+use std::str::Utf8Error;
+
 use macros::blocking_async;
 use postcard_rpc::{host_client::HostClient, standard_icd::WireError};
 use protocol::adc::{GetAdcValEndpoint, GetUniqueIdEndpoint};
@@ -5,7 +7,7 @@ use pyo3::prelude::*;
 use pyo3_stub_gen::derive::*;
 
 use crate::{
-    common::{BoardResult, connect_to_board},
+    common::{BoardError, BoardResult, connect_to_board},
     flash::flash_binary,
 };
 
@@ -54,11 +56,10 @@ impl Client {
     /// The ID is a 92 bit number, which is padded to 128 bits with zeros.
     ///
     /// :return: The serial number of the board.
-    async fn get_serial_number(&self) -> BoardResult<u128> {
+    async fn get_serial_number(&self) -> BoardResult<String, Utf8Error> {
         let id = self.client.send_resp::<GetUniqueIdEndpoint>(&()).await?;
-        let mut padded_id = [0u8; 16];
-        padded_id[..12].copy_from_slice(&id);
-        Ok(u128::from_le_bytes(padded_id))
+        let id = str::from_utf8(&id).map_err(BoardError::Endpoint)?;
+        Ok(id.to_owned())
     }
 
     async fn get_adc_val(&self) -> BoardResult<u16> {
