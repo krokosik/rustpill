@@ -31,12 +31,12 @@ pub async fn connect_to_board(
                 let patch = version & 0x000F;
                 let minor = (version & 0x00F0) >> 4;
                 let major = ((version & 0x0F00) >> 8) + 10 * ((version & 0xF000) >> 12);
-                let uid = d.serial_number().unwrap().as_bytes();
+
                 log::info!(
-                    "Found device: {} v{} ({:02X?})",
+                    "Found device: {} v{} (SN: {})",
                     d.product_string().unwrap_or("Unknown"),
                     format!("{}.{}.{}", major, minor, patch),
-                    uid
+                    d.serial_number().unwrap_or("N/A")
                 );
             }
             res
