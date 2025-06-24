@@ -1,7 +1,9 @@
 use postcard_rpc::{TopicDirection, endpoints, topics};
 
 #[cfg(feature = "use-std")]
+use pyo3::prelude::*;
 #[cfg(feature = "use-std")]
+use pyo3_stub_gen::derive::*;
 
 endpoints! {
     list = ENDPOINT_LIST;
@@ -9,7 +11,7 @@ endpoints! {
     | EndpointTy                | RequestTy                            | ResponseTy            | Path              |
     | ----------                | ---------                            | ----------            | ----              |
     | GetUniqueIdEndpoint       | ()                                   | [u8; 12]              | "unique_id/get"   |
-    | GetAdcValEndpoint         | ()                                   | u16                   | "adc_val/get"     | //what in path?
+    | GetAdcValEndpoint         | ()                                   | u16                   | "adc_val/get"     |
 }
 
 topics! {
