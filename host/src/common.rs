@@ -31,20 +31,12 @@ pub async fn connect_to_board(
                 let patch = version & 0x000F;
                 let minor = (version & 0x00F0) >> 4;
                 let major = ((version & 0x0F00) >> 8) + 10 * ((version & 0xF000) >> 12);
-                let uid = d
-                    .serial_number()
-                    .and_then(|sn| {
-                        let mut padded_id = [0u8; 16];
-                        padded_id[..12].copy_from_slice(&sn.as_bytes());
-                        Some(u128::from_le_bytes(padded_id))
-                    })
-                    .unwrap_or(0);
 
                 log::info!(
-                    "Found device: {} v{} ({})",
+                    "Found device: {} v{} (SN: {})",
                     d.product_string().unwrap_or("Unknown"),
                     format!("{}.{}.{}", major, minor, patch),
-                    uid
+                    d.serial_number().unwrap_or("N/A")
                 );
             }
             res
