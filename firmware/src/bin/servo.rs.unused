@@ -143,9 +143,9 @@ async fn server_task(mut server: AppServer) {
     }
 }
 
-fn unique_id_handler(_context: &mut Context, _header: VarHeader, _rqst: ()) -> [u8; 12] {
+fn unique_id_handler(_context: &mut Context, _header: VarHeader, _rqst: ()) -> [u8; 24] {
     defmt::info!("unique_id");
-    *embassy_stm32::uid::uid()
+    *embassy_stm32::uid::uid_hex_bytes()
 }
 
 fn configure_channel_handler(

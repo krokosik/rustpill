@@ -14,7 +14,7 @@ endpoints! {
     omit_std = true;
     | EndpointTy                | RequestTy                            | ResponseTy            | Path              |
     | ----------                | ---------                            | ----------            | ----              |
-    | GetUniqueIdEndpoint       | ()                                   | [u8; 12]              | "unique_id/get"   |
+    | GetUniqueIdEndpoint       | ()                                   | [u8; 24]              | "unique_id/get"   |
     | ConfigureChannel          | (PwmChannel, ServoChannelConfig)     | ()                    | "servo/channel"   |
     | GetServoConfig            | ()                                   | ServoConfig           | "servo/config"    |
     | SetFrequencyEndpoint      | u32                                  | ()                    | "servo/frequency" |
