@@ -55,13 +55,22 @@ Here is a brief description of each crate:
 
 1. Connect the Bluepill board via ST-LINK, but do not connect the 3V pin (bend it to the side)
 2. Connect the Bluepill board to the PC via USB.
-3. Flash it with `cargo xtask flash servo` or any other binary
+3. Flash it with `cargo xtask flash minimal` or any other binary
 4. Build Python bindings with the Maturin build tool: `cargo xtask pygen`
 5. Test the commands in the `test.py` file. Make sure you use the `uv` created local virtual environment.
 
+## New firmware
+
+1. Create copies of the `minimal.rs` files in `protocol`, `firmware` and `host` crates.
+2. Rename them to the **same** name that will be the name of your binary from now on.
+3. Initialize the modules. Add new statements for your binary in [host](host/src/hosts/mod.rs) and [protocol](protocol/src/lib.rs)
+4. Rename your host client struct and add it to the [Python module](host/src/lib.rs)
+5. Update the `protocol` imports in `firmware` and `host`
+6. Now you can start developing. Create a communication schema in `protocol` and then proceed to implementing logic, handlers in `firmware` and callers in `host`
+
 ## Debugging
 
-Install the `probe-rs` VS Code extension and set breakpoints in the code. Go to the firmware binary code file, for example `servo.rs` and run the `probe-rs binary` debugger or simply press `F5`.
+Install the `probe-rs` VS Code extension and set breakpoints in the code. Go to the firmware binary code file, for example `minimal.rs` and run the `probe-rs binary` debugger or simply press `F5`.
 
 There are some issues to be ironed out in the config or the tool itself though:
 - https://github.com/probe-rs/probe-rs/issues/3045
@@ -79,5 +88,5 @@ cargo <cmd> -p firmware --bin <binary> --release
 - expand the firmware and port more Cube code
 - another crate for RP Pico firmware
 - create a global defmt logger that sends data via a topic 
-- fix the `firmare` runner, which is ignored when using `forced-target`, i.e. find a way to make the Cargo workspace work nicer. [cargo issue](https://github.com/rust-lang/cargo/issues/14833). Another option might be to exclude firmware from workspace and use `linkedProjects` in Rust Analyzer
+- fix the `firmware` runner, which is ignored when using `forced-target`, i.e. find a way to make the Cargo workspace work nicer. [cargo issue](https://github.com/rust-lang/cargo/issues/14833). Another option might be to exclude firmware from workspace and use `linkedProjects` in Rust Analyzer
 - test multiple connected boards scenario
