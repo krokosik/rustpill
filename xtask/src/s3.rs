@@ -1,8 +1,8 @@
-use std::{env, error::Error, path::Path};
+use std::{env, path::Path};
 
 const MINIO_BUCKET: &str = "rustpill-firmwares";
 
-pub fn get_bucket() -> Result<Box<s3::Bucket>, Box<dyn Error>> {
+pub fn get_bucket() -> Result<Box<s3::Bucket>, s3::error::S3Error> {
     let minio_endpoint = env::var("MINIO_ENDPOINT").unwrap_or("https://s3.qodl.eu".to_string());
     let access_key_id = env::var("MINIO_ACCESS_KEY_ID").ok();
     let secret_access_key = env::var("MINIO_SECRET_ACCESS_KEY").ok();
@@ -33,7 +33,7 @@ pub fn upload_to_s3(
     source_dir: &Path,
     firmware_name: &str,
     chip_type: &str,
-) -> Result<(), Box<dyn Error>> {
+) -> Result<(), s3::error::S3Error> {
     let s3_key = [chip_type, env!("CARGO_PKG_VERSION"), firmware_name].join("/");
 
     let content = std::fs::read(source_dir.join(firmware_name))?;
