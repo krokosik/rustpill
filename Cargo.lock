@@ -954,7 +954,7 @@ checksum = "37909eebbb50d72f9059c3b6d82c0463f2ff062c9e95845c43a6c9c0355411be"
 
 [[package]]
 name = "firmware"
-version = "0.1.4"
+version = "0.1.5"
 dependencies = [
  "cortex-m",
  "cortex-m-rt",
@@ -1243,7 +1243,7 @@ dependencies = [
 
 [[package]]
 name = "host"
-version = "0.1.4"
+version = "0.1.5"
 dependencies = [
  "env_logger",
  "log",
@@ -1586,7 +1586,7 @@ dependencies = [
 
 [[package]]
 name = "macros"
-version = "0.1.4"
+version = "0.1.5"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2056,7 +2056,7 @@ dependencies = [
 
 [[package]]
 name = "protocol"
-version = "0.1.4"
+version = "0.1.5"
 dependencies = [
  "postcard-rpc",
  "postcard-schema",
@@ -3407,7 +3407,7 @@ checksum = "ea2f10b9bb0928dfb1b42b65e1f9e36f7f54dbdf08457afefb38afcdec4fa2bb"
 
 [[package]]
 name = "xtask"
-version = "0.1.4"
+version = "0.1.5"
 dependencies = [
  "dotenvy",
  "rust-s3",
