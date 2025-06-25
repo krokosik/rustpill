@@ -9,8 +9,10 @@ use pyo3_stub_gen::derive::*;
 
 use crate::utils::PwmChannel;
 
+pub const USB_DEVICE_NAME: &'static str = "bluepill-servo";
+
 endpoints! {
-    list = SERVO_ENDPOINT_LIST;
+    list = ENDPOINT_LIST;
     omit_std = true;
     | EndpointTy                | RequestTy                            | ResponseTy            | Path              |
     | ----------                | ---------                            | ----------            | ----              |

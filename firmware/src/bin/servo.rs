@@ -50,7 +50,7 @@ define_dispatch! {
     context: Context;
 
     endpoints: {
-        list: SERVO_ENDPOINT_LIST;
+        list: ENDPOINT_LIST;
 
         | EndpointTy                | kind      | handler                       |
         | ----------                | ----      | -------                       |

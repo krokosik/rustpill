@@ -31,7 +31,7 @@ impl ServoClient {
     #[new]
     #[pyo3(signature = (serial_number = None))]
     async fn new(serial_number: Option<&str>) -> BoardResult<Self> {
-        let client = connect_to_board(serial_number).await?;
+        let client = connect_to_board(USB_DEVICE_NAME, serial_number).await?;
 
         let config = client.send_resp::<GetServoConfig>(&()).await?;
         log::info!("Servo config: {:?}", config);

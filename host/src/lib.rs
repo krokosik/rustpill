@@ -2,10 +2,12 @@ use pyo3::{ffi::c_str, prelude::*};
 
 mod common;
 mod flash;
-mod servo;
+mod hosts;
 
 use pyo3_stub_gen::define_stub_info_gatherer;
-use servo::ServoClient;
+
+use hosts::minimal::MinimalClient;
+use hosts::servo::ServoClient;
 
 /// This module hosts Python wrappers for communicating with Bluepill Rust firmware.
 #[pymodule]
@@ -30,7 +32,10 @@ if not logging.getLogger().hasHandlers():
 
     m.add_function(wrap_pyfunction!(flash::check_probe_rs, m)?)?;
     m.add_function(wrap_pyfunction!(flash::flash_binary, m)?)?;
+
+    m.add_class::<MinimalClient>()?;
     m.add_class::<ServoClient>()?;
+
     Ok(())
 }
 

@@ -8,6 +8,7 @@ use postcard_rpc::{
 use pyo3::prelude::*;
 
 pub async fn connect_to_board(
+    product_string: &str,
     serial_number: Option<&str>,
 ) -> Result<HostClient<WireError>, BoardError<Infallible>> {
     if serial_number.is_some() {
@@ -22,7 +23,7 @@ pub async fn connect_to_board(
                 if serial_number.is_some() {
                     d.serial_number() == serial_number
                 } else {
-                    d.product_string() == Some("bluepill-servo")
+                    d.product_string() == Some(product_string)
                 }
             };
             // Sadly HostClient doesn't expose the DeviceInfo struct
