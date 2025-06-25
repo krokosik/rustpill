@@ -43,7 +43,15 @@ impl ServoClient {
     /// Flash the servo firmware to the board.
     /// This function will use the `probe-rs` tool to flash the firmware binary to the board.
     fn flash() -> PyResult<()> {
-        flash_binary("servo")?;
+        let filename = Path::new(file!())
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .ok_or_else(|| {
+            pyo3::exceptions::PyChildProcessError::new_err(
+                "Mismatch between host filename and binary name. Use the flash_binary function with correct binary name.",
+            )
+        })?;
+        flash_binary(filename)?;
         Ok(())
     }
 
