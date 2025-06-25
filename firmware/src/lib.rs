@@ -79,6 +79,10 @@ pub fn get_usb_config(product_name: &'static str) -> embassy_usb::Config<'static
 
 #[embassy_executor::task]
 pub async fn idle_task() {
+    // This task prevents the MCU from going to sleep whent the executor has no tasks to run.
+    // In such state flashing new firmware will not be possible without a reset, which our
+    // probes (bluepill ST-LINK) do not support.
+    // https://embassy.dev/book/#_how_can_i_prevent_the_thread_mode_executor_from_going_to_sleep
     loop {
         embassy_futures::yield_now().await;
     }
