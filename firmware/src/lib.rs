@@ -61,8 +61,7 @@ pub fn get_usb_config(product_name: &'static str) -> embassy_usb::Config<'static
 
     defmt::info!("Serial number: {}", embassy_stm32::uid::uid_hex());
 
-    let version_bcd = 0
-        + (env!("CARGO_PKG_VERSION_MAJOR").parse::<u16>().unwrap() << 8)
+    let version_bcd = (env!("CARGO_PKG_VERSION_MAJOR").parse::<u16>().unwrap() << 8)
         + (env!("CARGO_PKG_VERSION_MINOR").parse::<u16>().unwrap() << 4)
         + env!("CARGO_PKG_VERSION_PATCH").parse::<u16>().unwrap();
 

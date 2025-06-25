@@ -15,7 +15,6 @@ const PROBE_RS_VERSION: &str = "0.28.0";
 pub fn check_probe_rs() {
     if Command::new("probe-rs").arg("--version").status().is_ok() {
         log::info!("Probe-rs is installed.");
-        return;
     } else {
         log::info!("Probe-rs is not installed.");
         let status = if cfg!(target_os = "windows") {
@@ -24,7 +23,7 @@ pub fn check_probe_rs() {
                 version = PROBE_RS_VERSION
             );
             Command::new("powershell")
-                .args(&["-ExecutionPolicy", "Bypass", "-c", &script])
+                .args(["-ExecutionPolicy", "Bypass", "-c", &script])
                 .status()
         } else if cfg!(target_os = "linux") {
             // Use a shell to pipe the output of curl to sh.
@@ -42,7 +41,6 @@ pub fn check_probe_rs() {
             Ok(s) if s.success() => {
                 if Command::new("probe-rs").arg("--version").status().is_ok() {
                     log::info!("Probe-rs installed successfully.");
-                    return;
                 } else {
                     log::info!("Probe-rs installation did not complete correctly.");
                     exit(1);

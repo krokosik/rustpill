@@ -35,7 +35,7 @@ topics! {
 }
 
 #[cfg_attr(feature = "use-std", gen_stub_pyclass, pyclass(get_all, set_all))]
-#[derive(Serialize, Deserialize, Schema, Debug, Default, PartialEq, Clone)]
+#[derive(Serialize, Deserialize, Schema, Debug, Default, PartialEq, Clone, Copy)]
 pub struct ServoChannelConfig {
     pub min_angle_duty_cycle: u16,
     pub max_angle_duty_cycle: u16,

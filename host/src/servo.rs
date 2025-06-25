@@ -147,7 +147,7 @@ impl ServoClient {
         let channel_config = channel_config.clone();
 
         self.client
-            .send_resp::<ConfigureChannel>(&((channel, channel_config)))
+            .send_resp::<ConfigureChannel>(&(channel, channel_config))
             .await?;
         Ok(())
     }

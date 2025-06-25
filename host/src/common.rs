@@ -33,9 +33,8 @@ pub async fn connect_to_board(
                 let major = ((version & 0x0F00) >> 8) + 10 * ((version & 0xF000) >> 12);
 
                 log::info!(
-                    "Found device: {} v{} (SN: {})",
+                    "Found device: {} v{major}.{minor}.{patch} (SN: {})",
                     d.product_string().unwrap_or("Unknown"),
-                    format!("{}.{}.{}", major, minor, patch),
                     d.serial_number().unwrap_or("N/A")
                 );
             }
@@ -94,9 +93,9 @@ impl<E: Debug> From<SchemaError<WireError>> for BoardError<E> {
     }
 }
 
-impl<E: Debug> Into<PyErr> for BoardError<E> {
-    fn into(self) -> PyErr {
-        match self {
+impl<E: Debug> From<BoardError<E>> for PyErr {
+    fn from(val: BoardError<E>) -> Self {
+        match val {
             BoardError::Comms(err) => {
                 PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("Comms error: {:?}", err))
             }

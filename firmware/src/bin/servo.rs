@@ -86,21 +86,22 @@ async fn main(spawner: Spawner) {
         SERVO_FREQ,
         timer::low_level::CountingMode::CenterAlignedBothInterrupts,
     );
-    let max_duty_cycle = pwm.max_duty_cycle() as u32;
+    let max_duty_cycle = pwm.max_duty_cycle();
     defmt::info!("Max Duty Cycle: {}", max_duty_cycle);
-    let servo_min = max_duty_cycle * SERVO_FREQ.0 / 1_000 * SERVO_MIN_US / 1_000;
-    let servo_max = max_duty_cycle * SERVO_FREQ.0 / 1_000 * SERVO_MAX_US / 1_000;
+    let servo_min = (max_duty_cycle as u32) * SERVO_FREQ.0 / 1_000 * SERVO_MIN_US / 1_000;
+    let servo_max = (max_duty_cycle as u32) * SERVO_FREQ.0 / 1_000 * SERVO_MAX_US / 1_000;
 
     defmt::info!("Servo min: {}, Servo max: {}", servo_min, servo_max);
 
-    let mut servo_config = ServoConfig::default();
-    servo_config.servo_frequency = SERVO_FREQ.0;
-    servo_config.max_duty_cycle = max_duty_cycle as u16;
-    for i in 0..4 {
-        servo_config.channels[i].min_angle_duty_cycle = servo_min as u16;
-        servo_config.channels[i].max_angle_duty_cycle = servo_max as u16;
-        servo_config.channels[i].enabled = false;
-    }
+    let servo_config = ServoConfig {
+        servo_frequency: SERVO_FREQ.0,
+        max_duty_cycle,
+        channels: [ServoChannelConfig {
+            min_angle_duty_cycle: servo_min as u16,
+            max_angle_duty_cycle: servo_max as u16,
+            ..Default::default()
+        }; 4],
+    };
 
     // Prepare the context for the application.
     let context = Context {
