@@ -63,7 +63,9 @@ pub fn check_probe_rs() {
 pub fn flash_binary(binary_name: &str) -> PyResult<()> {
     check_probe_rs();
 
-    let binary_path = env::temp_dir().join(binary_name);
+    let binary_path = env::temp_dir()
+        .join(env!("CARGO_PKG_VERSION"))
+        .join(binary_name);
 
     if !binary_path.exists() {
         log::info!("Downloading binary: {:?}", binary_name);
@@ -75,6 +77,12 @@ pub fn flash_binary(binary_name: &str) -> PyResult<()> {
             ))
         })?;
 
+        std::fs::create_dir_all(binary_path.parent().unwrap()).map_err(|e| {
+            PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!(
+                "Failed to create directory for binary: {}",
+                e
+            ))
+        })?;
         let mut file = File::create(&binary_path)?;
 
         let mut binary = bucket

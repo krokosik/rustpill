@@ -32,12 +32,22 @@ pub async fn connect_to_board(
                 let patch = version & 0x000F;
                 let minor = (version & 0x00F0) >> 4;
                 let major = ((version & 0x0F00) >> 8) + 10 * ((version & 0xF000) >> 12);
+                let version = format!("{major}.{minor}.{patch}");
 
                 log::info!(
-                    "Found device: {} v{major}.{minor}.{patch} (SN: {})",
+                    "Found device: {} v{} (SN: {})",
                     d.product_string().unwrap_or("Unknown"),
+                    version,
                     d.serial_number().unwrap_or("N/A")
                 );
+
+                if version != env!("CARGO_PKG_VERSION") {
+                    log::warn!(
+                        "Device version {} does not match host version {}. Consider flashing using the client's `flash` command.",
+                        version,
+                        env!("CARGO_PKG_VERSION")
+                    );
+                }
             }
             res
         },
