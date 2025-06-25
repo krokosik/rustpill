@@ -4,7 +4,8 @@ use macros::blocking_async;
 use postcard_rpc::{host_client::HostClient, standard_icd::WireError};
 use protocol::heater::{
     GetPidvalsEndpoint, GetUniqueIdEndpoint, HeaterDisableEndpoint, HeaterEnableEndpoint,
-    PidResetEndpoint, SetPWMDutyEndpoint, SetPidConstsEndpoint,
+    PidResetEndpoint, Pidvals, RecalcPIEndpoint, SetPISetpoint, SetPWMDutyEndpoint,
+    SetPidConstsEndpoint,
 };
 use pyo3::prelude::*;
 use pyo3_stub_gen::derive::*;
@@ -63,6 +64,42 @@ impl Client {
         let id = self.client.send_resp::<GetUniqueIdEndpoint>(&()).await?;
         let id = str::from_utf8(&id).map_err(BoardError::Endpoint)?;
         Ok(id.to_owned())
+    }
+
+    async fn disable_heater(&self) -> BoardResult<()> {
+        self.client.send_resp::<HeaterDisableEndpoint>(&()).await?;
+        Ok(())
+    }
+    async fn enable_heater(&self) -> BoardResult<()> {
+        self.client.send_resp::<HeaterEnableEndpoint>(&()).await?;
+        Ok(())
+    }
+    async fn set_heater_duty(&self, duty: u16) -> BoardResult<()> {
+        self.client.send_resp::<SetPWMDutyEndpoint>(&duty).await?;
+        Ok(())
+    }
+    async fn reset_pid(&self) -> BoardResult<()> {
+        self.client.send_resp::<PidResetEndpoint>(&()).await?;
+        Ok(())
+    }
+    async fn set_pid_consts(&self, kp: f32, ki: f32) -> BoardResult<()> {
+        self.client
+            .send_resp::<SetPidConstsEndpoint>(&[kp, ki])
+            .await?;
+        Ok(())
+    }
+    async fn get_pid_vals(&self) -> BoardResult<Pidvals> {
+        let pidvals = self.client.send_resp::<GetPidvalsEndpoint>(&()).await?;
+        Ok(pidvals)
+    }
+    async fn recalc_pi(&self) -> BoardResult<()> {
+        self.client.send_resp::<RecalcPIEndpoint>(&()).await?;
+        Ok(())
+    }
+
+    async fn set_setpoint(&self, val: u16) -> BoardResult<()> {
+        self.client.send_resp::<SetPISetpoint>(&val).await?;
+        Ok(())
     }
 }
 //END FUNCTIONS FOR PYTHON CLIENT

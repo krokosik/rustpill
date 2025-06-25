@@ -19,6 +19,8 @@ endpoints! {
     | HeaterEnableEndpoint      | ()            | ()                | "heater/enable"   |
     | SetPidConstsEndpoint      | [f32;2]       | ()                | "pid/set_consts"  |
     | PidResetEndpoint          | ()            | ()                | "pid/reset"       |
+    | RecalcPIEndpoint          | ()            | ()                | "pid/recalc"      |
+    | SetPISetpoint             | u16           | ()                | "pid/set_setpoint"|
 }
 
 topics! {

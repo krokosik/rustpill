@@ -64,6 +64,8 @@ define_dispatch! {
         | HeaterEnableEndpoint      | blocking  | heater_enable                 |
         | SetPidConstsEndpoint      | blocking  | pid_set_const                 |
         | PidResetEndpoint          | blocking  | pid_reset                     |
+        | RecalcPIEndpoint          | blocking  | recalc_pi                     |
+        | SetPISetpoint             | blocking  | set_setpoint                  |
     };
     topics_in: {
         list: TOPICS_IN_LIST;
@@ -104,7 +106,7 @@ async fn main(spawner: Spawner) {
         dt: 1,
         prev_clk: embassy_time::Instant::now().as_ticks(),
         is_on: false,
-        max_int_val: 100.,
+        max_int_val: 1000.,
         int_sum: 0.,
     };
     let context = Context {
@@ -206,7 +208,7 @@ fn recalc_pi(context: &mut Context, _header: VarHeader, _rqst: ()) -> () {
     context.pidvals.error_val =
         (context.pidvals.adc_val as i16) - (context.pidvals.setpoint as i16);
 
-    context.pidvals.int_sum += context.pidvals.kp * context.pidvals.error_val as f32;
+    context.pidvals.int_sum += context.pidvals.ki * context.pidvals.error_val as f32;
     if context.pidvals.int_sum > context.pidvals.max_int_val {
         context.pidvals.int_sum = context.pidvals.max_int_val;
     } else if context.pidvals.int_sum < -context.pidvals.max_int_val {
@@ -229,6 +231,10 @@ fn recalc_pi(context: &mut Context, _header: VarHeader, _rqst: ()) -> () {
 
 fn get_pidvals(context: &mut Context, _header: VarHeader, _rqst: ()) -> Pidvals {
     context.pidvals.clone()
+}
+
+fn set_setpoint(context: &mut Context, _header: VarHeader, rqst: u16) -> () {
+    context.pidvals.setpoint = rqst;
 }
 
 //END FUNCTIONS FOR ENDPOINTS
