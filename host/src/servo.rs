@@ -1,4 +1,4 @@
-use std::str::Utf8Error;
+use std::{path::Path, str::Utf8Error};
 
 use macros::blocking_async;
 use postcard_rpc::{host_client::HostClient, standard_icd::WireError};
