@@ -33,7 +33,7 @@ impl MinimalClient {
     }
 
     #[staticmethod]
-    /// Flash the servo firmware to the board.
+    /// Flash the firmware to the board.
     /// This function will use the `probe-rs` tool to flash the firmware binary to the board.
     fn flash() -> PyResult<()> {
         let filename = Path::new(file!())
