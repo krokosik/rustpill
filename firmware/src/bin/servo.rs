@@ -187,6 +187,8 @@ async fn defmt_handler_start_logging(
     let buf_len = buf.len();
 
     while !STOP.load(Ordering::Acquire) {
+        // This future is broken, on empty log queue it blocks the entire application.
+        // Even timeouts don't work with it, probably our own async version is needed.
         let grant = consumer.wait_for_log().await;
         let n = core::cmp::min(grant.len(), buf_len);
 
