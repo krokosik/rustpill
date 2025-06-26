@@ -90,3 +90,21 @@ cargo <cmd> -p firmware --bin <binary> --release
 - create a global defmt logger that sends data via a topic 
 - fix the `firmware` runner, which is ignored when using `forced-target`, i.e. find a way to make the Cargo workspace work nicer. [cargo issue](https://github.com/rust-lang/cargo/issues/14833). Another option might be to exclude firmware from workspace and use `linkedProjects` in Rust Analyzer
 - test multiple connected boards scenario
+
+## Asyncio
+
+Currently we run a Tokio event loop inside the Rust binary, which is responsible for all the Rust async logic. As our Python code does not really rely on `asyncio`, all the exposed Python binding are synchronous and are converted into such by wrapping every Rust async function body in 
+
+```rust
+pyo3_async_runtimes::tokio::get_runtime().block_on(async move { /* code */ }) 
+```
+
+This is taken care of by the `blocking_async` macro, making all of the Python clients blocking. In the future (hehe), we might want to have non-blocking calls as well, which might be very useful for streams of data. It is also worth noting that IPython supports top-level await. However, the state of async in PyO3 is not ready for that yet:
+
+- tracking issue https://github.com/PyO3/pyo3/issues/1632
+- async constructors not supported https://github.com/PyO3/pyo3/issues/5176
+- type stub generator ignores async https://github.com/Jij-Inc/pyo3-stub-gen
+- there is no convenient API for streams https://github.com/PyO3/pyo3-async-runtimes/issues/35, https://github.com/awestlake87/pyo3-asyncio/issues/17 and tracking issue
+- the `pyo3-asyncio` and `pyo3-async-runtimes` seem dead. Development seems to be continuing in the main repo, under `experimental-async` flag.
+
+In conclusion it might be better to wait until we really really need async in Python. It is doable, but it might be better to just wait for the design to stabilize.
