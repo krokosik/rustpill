@@ -22,3 +22,6 @@ servo.get_angle(2)
 servo.config
 
 # %%
+servo.start_defmt_logging()
+# %%
+servo.stop_defmt_logging()

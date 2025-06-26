@@ -67,6 +67,26 @@ impl ServoClient {
         !self.client.is_closed()
     }
 
+    async fn start_defmt_logging(&self) -> BoardResult<()> {
+        self.client
+            .send_resp::<StartDefmtLoggingEndpoint>(&())
+            .await?;
+        Ok(())
+    }
+
+    async fn stop_defmt_logging(&self) -> BoardResult<bool> {
+        let stopped = self
+            .client
+            .send_resp::<StopDefmtLoggingEndpoint>(&())
+            .await?;
+        if stopped {
+            log::info!("Defmt logging stopped");
+        } else {
+            log::warn!("Defmt logging was not running");
+        }
+        Ok(stopped)
+    }
+
     /// Get the serial number of the board.
     /// The ID is a 92-bit number, which is padded to 128 bits with zeros.
     ///
