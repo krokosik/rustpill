@@ -16,8 +16,6 @@ use embassy_stm32::{
 };
 use embassy_sync::blocking_mutex::raw::ThreadModeRawMutex;
 use embassy_sync::mutex::Mutex;
-use embassy_time::Timer;
-use panic_probe as _;
 use panic_probe as _;
 use portable_atomic::{AtomicBool, Ordering};
 use postcard_rpc::{
@@ -145,7 +143,7 @@ async fn main(spawner: Spawner) {
     let driver = usb::Driver::new(p.USB, Irqs, p.PA12, p.PA11);
 
     // Create embassy-usb Config
-    let usb_config = get_usb_config("bluepill-servo");
+    let usb_config = get_usb_config(USB_DEVICE_NAME);
 
     let pbufs = PBUFS.take();
     let (device, tx_impl, rx_impl) = STORAGE.init(driver, usb_config, pbufs.tx_buf.as_mut_slice());
@@ -195,7 +193,7 @@ async fn defmt_handler_start_logging(
                 n -= buf_len;
 
                 if sender
-                    .publish::<protocol::DefmtLoggingTopic>(seq.into(), &(buf_len as u8, buf))
+                    .publish::<DefmtLoggingTopic>(seq.into(), &(buf_len as u8, buf))
                     .await
                     .is_err()
                 {
@@ -205,7 +203,7 @@ async fn defmt_handler_start_logging(
             } else {
                 buf[..n].copy_from_slice(&grant[..n]);
                 if sender
-                    .publish::<protocol::DefmtLoggingTopic>(seq.into(), &(n as u8, buf))
+                    .publish::<DefmtLoggingTopic>(seq.into(), &(n as u8, buf))
                     .await
                     .is_err()
                 {
@@ -219,7 +217,7 @@ async fn defmt_handler_start_logging(
     }
 
     let _ = sender
-        .publish::<protocol::DefmtLoggingTopic>(seq.into(), &(0, buf))
+        .publish::<DefmtLoggingTopic>(seq.into(), &(0, buf))
         .await;
 
     STOP.store(false, Ordering::Release);
