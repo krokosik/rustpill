@@ -73,7 +73,9 @@ pub fn get_binary(binary_name: &str) -> anyhow::Result<PathBuf> {
 
             let bucket = get_bucket()?;
 
-            std::fs::create_dir_all(binary_path.parent()?)?;
+            if let Some(parent_dir) = binary_path.parent() {
+                std::fs::create_dir_all(parent_dir)?;
+            }
 
             let mut file = File::create(&binary_path)?;
 
@@ -91,6 +93,7 @@ pub fn get_binary(binary_name: &str) -> anyhow::Result<PathBuf> {
     {
         let workspace_dir = env!("CARGO_MANIFEST_DIR");
         let binary_path = PathBuf::from(workspace_dir)
+            .join("..")
             .join("target")
             .join("thumbv7m-none-eabi")
             .join("release")
@@ -99,7 +102,7 @@ pub fn get_binary(binary_name: &str) -> anyhow::Result<PathBuf> {
         if !binary_path.exists() {
             return Err(anyhow::anyhow!(
                 "Binary {} does not exist. Please build the project first.",
-                binary_name
+                binary_path.to_str().unwrap_or("N/A")
             ));
         }
         Ok(binary_path)
