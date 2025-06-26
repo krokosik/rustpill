@@ -5,6 +5,7 @@ use postcard_rpc::{
     host_client::{HostClient, HostErr, IoClosed, SchemaError},
     standard_icd::{ERROR_PATH, WireError},
 };
+use protocol::servo::*;
 use pyo3::prelude::*;
 
 use crate::{flash::get_binary, log::run_decoder};
@@ -67,17 +68,23 @@ pub async fn connect_logger(
     py: Python<'_>,
     client: &HostClient<WireError>,
 ) -> Result<(), BoardError<Infallible>> {
-    let mut logsub = client
-        .subscribe_multi::<protocol::DefmtLoggingTopic>(64)
-        .await?;
+    let mut logsub = client.subscribe_multi::<DefmtLoggingTopic>(64).await?;
 
     let (tx, rx) = mpsc::channel::<Vec<u8>>();
 
     // ! Figure out how to use `tokio` instead of `std::thread` for async compatibility
     py.allow_threads(|| {
+        log::info!("Starting defmt decoder thread");
         std::thread::spawn(move || {
-            let binary_path = get_binary("servo").unwrap();
-            let _ = run_decoder(&binary_path, rx);
+            log::info!("Decoder thread started");
+            let binary_path = get_binary("servo").unwrap_or_else(|e| {
+                log::error!("Failed to get binary path: {}", e);
+                panic!("Failed to get binary path: {}", e)
+            });
+            log::info!("Using binary path: {:?}", binary_path);
+            if let Err(e) = run_decoder(&binary_path, rx) {
+                log::error!("Failed to run decoder: {}", e);
+            }
         });
     });
 
@@ -86,6 +93,7 @@ pub async fn connect_logger(
     core::mem::drop(tokio::task::spawn(async move {
         log::info!("Starting log subscription");
         while let Ok((n, buf)) = logsub.recv().await {
+            log::info!("Received log chunk of size {}", n);
             if tx.send(buf[..n as usize].to_vec()).is_err() {
                 log::error!("Failed to send data to decoder");
                 break;

@@ -13,7 +13,7 @@ pub fn run_decoder<P>(bin_path: P, rx: mpsc::Receiver<Vec<u8>>) -> anyhow::Resul
 where
     P: AsRef<Path>,
 {
-    let bytes = fs::read(bin_path)?;
+    let bytes = fs::read(&bin_path)?;
     let table = Table::parse(&bytes)?.ok_or_else(|| anyhow!(".defmt data not found"))?;
     let locs = table.get_locations(&bytes)?;
 
@@ -39,10 +39,19 @@ where
     let mut stream_decoder = table.new_stream_decoder();
     let current_dir = std::env::current_dir()?;
 
+    log::info!(
+        "Running defmt decoder for {} with {} locations",
+        bin_path.as_ref().display(),
+        locs.as_ref().map_or(0, |l| l.len())
+    );
+
     while let Ok(data) = rx.recv() {
         if data.is_empty() {
+            log::warn!("Received empty data chunk, exiting decoder loop");
             break;
         }
+
+        log::trace!("Received data chunk of size {}", data.len());
 
         stream_decoder.received(&data);
 

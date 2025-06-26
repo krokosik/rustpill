@@ -171,6 +171,7 @@ async fn defmt_handler_start_logging(
     _rqst: (),
     sender: Sender<AppTx>,
 ) {
+    defmt::info!("defmt start");
     let mut consumer = context.consumer.lock().await;
     if sender
         .reply::<StartDefmtLoggingEndpoint>(header.seq_no, &())
