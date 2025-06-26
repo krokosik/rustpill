@@ -185,36 +185,25 @@ async fn defmt_handler_start_logging(
     let mut seq = 0u8;
     let mut buf = [0u8; 32];
     let buf_len = buf.len();
+
     while !STOP.load(Ordering::Acquire) {
         let grant = consumer.wait_for_log().await;
-        let mut n = grant.len();
-        while n > 0 {
-            if n > buf_len {
-                buf.copy_from_slice(&grant[..buf_len]);
-                n -= buf_len;
+        let n = core::cmp::min(grant.len(), buf_len);
 
-                if sender
-                    .publish::<DefmtLoggingTopic>(seq.into(), &(buf_len as u8, buf))
-                    .await
-                    .is_err()
-                {
-                    defmt::error!("Failed to send defmt log chunk. Stopping...");
-                    return;
-                }
-            } else {
-                buf[..n].copy_from_slice(&grant[..n]);
-                if sender
-                    .publish::<DefmtLoggingTopic>(seq.into(), &(n as u8, buf))
-                    .await
-                    .is_err()
-                {
-                    defmt::error!("Failed to send defmt log chunk. Stopping...");
-                    return;
-                }
-                n = 0;
-            }
-            seq = seq.wrapping_add(1);
+        buf[..n].copy_from_slice(&grant[..n]);
+
+        if sender
+            .publish::<DefmtLoggingTopic>(seq.into(), &(n as u8, buf))
+            .await
+            .is_err()
+        {
+            defmt::error!("Failed to send defmt log chunk. Stopping...");
+            return;
         }
+
+        seq = seq.wrapping_add(1);
+
+        grant.release(n);
     }
 
     let _ = sender
