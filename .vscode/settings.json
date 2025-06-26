@@ -8,6 +8,7 @@
     "**/target/**": true
   },
   "rust-analyzer.cargo.allTargets": false,
+  "rust-analyzer.cargo.targetDir": true,
   "rust-analyzer.check.workspace": false,
   "rust-analyzer.lens.enable": false,
   "[rust]": {

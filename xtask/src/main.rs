@@ -125,7 +125,11 @@ fn build_stubs() -> Result<(), DynError> {
 
     cmd.current_dir(project_root());
 
-    cmd.arg("run").arg("-p").arg("host").arg("--bin=stub_gen");
+    cmd.arg("run")
+        .arg("-p")
+        .arg("host")
+        .arg("--bin=stub_gen")
+        .arg("--target-dir=target/stub_gen"); // Due to different lib types, pyo3 crates had to be recompiled on each pygen
 
     let status = cmd.status()?;
     if !status.success() {
